@@ -119,6 +119,10 @@ A key learning was:
 
 > The model proposes actions, but the application/controller decides what actually gets executed.
 
+This project intentionally uses conservative serial execution for dependent tool calls.
+
+Strict dependency graphs, argument/result provenance, parallel scheduling, and workflow orchestration are deferred to a later dedicated project.
+
 ---
 
 ## 003 - PDF RAG Reader
@@ -252,9 +256,13 @@ Areas being explored include:
 - agent loops
 - state
 - multi-step workflows
+- planning
+- tool orchestration
+- dependency graphs
+- result provenance
+- serial and parallel tool execution
 - retries
 - error handling
-- planning
 - memory
 
 ### RAG
@@ -296,7 +304,51 @@ Areas being explored include:
 
 The repository will continue with projects such as:
 
-## 004 - Research Agent
+## 004 - Tool Orchestration / Workflow Engine
+
+Build a controller that can coordinate multiple tool calls reliably.
+
+Topics:
+
+- structured planning
+- breaking tasks into smaller executable steps
+- step IDs
+- explicit `depends_on` relationships
+- references to previous tool results
+- argument/result provenance
+- dependency graphs / DAGs
+- serial vs parallel execution
+- ready-step detection
+- controller validation
+- retries
+- timeouts
+- tool metadata
+- side-effect policies
+- re-planning after unexpected results
+
+The progression is:
+
+```text
+LLM creates structured plan
+        ↓
+Controller validates plan
+        ↓
+Dependency graph determines ready steps
+        ↓
+Independent steps may run in parallel
+        ↓
+Dependent steps wait for actual tool results
+        ↓
+State is updated
+        ↓
+Re-plan when necessary
+```
+
+This project addresses a limitation discovered in `002`: prompts can guide tool usage, but they cannot guarantee ordering, provenance, or safe parallel execution.
+
+---
+
+## 005 - Research Agent
 
 A multi-tool research agent capable of:
 
@@ -305,10 +357,11 @@ A multi-tool research agent capable of:
 - comparing sources
 - using tools
 - producing cited answers
+- using the orchestration concepts learned in `004`
 
 ---
 
-## 005 - SQL / Data Agent
+## 006 - SQL / Data Agent
 
 An agent that can:
 
@@ -318,10 +371,11 @@ An agent that can:
 - execute read-only queries
 - analyze results
 - produce summaries
+- maintain an auditable execution flow
 
 ---
 
-## 006 - MCP Agent
+## 007 - MCP Agent
 
 Learn how agents interact with external systems using the Model Context Protocol.
 
@@ -331,10 +385,11 @@ Topics:
 - MCP tools
 - resources
 - external integrations
+- permissions and tool boundaries
 
 ---
 
-## 007 - Agent Evaluation and Observability
+## 008 - Agent Evaluation and Observability
 
 Focus on evaluating AI systems rather than only building them.
 
@@ -343,14 +398,17 @@ Potential topics:
 - retrieval quality
 - answer correctness
 - tool-call accuracy
+- plan correctness
+- dependency/execution correctness
 - latency
 - tracing
 - regression testing
 - prompt evaluation
+- failure analysis
 
 ---
 
-## 008 - Production AI Service
+## 009 - Production AI Service
 
 Take an AI workflow and expose it as a production-style backend service.
 
@@ -358,12 +416,32 @@ Potential topics:
 
 - FastAPI
 - async Python
+- background workers
 - queues
 - retries
 - caching
 - streaming
+- rate limiting
 - Docker
 - monitoring
+- cancellation
+- concurrency
+
+---
+
+## 010 - Multi-Agent / LangGraph Workflows
+
+After manually understanding tool calling and orchestration, explore higher-level workflow abstractions.
+
+Potential topics:
+
+- state machines
+- multi-agent coordination
+- graph-based workflows
+- planner/executor patterns
+- persistent state
+- human-in-the-loop steps
+- comparing framework behavior with the manually built orchestration engine
 
 ---
 
@@ -372,7 +450,6 @@ Potential topics:
 After understanding the underlying mechanisms manually, the repository may explore:
 
 - LangChain
-- LangGraph
 - LlamaIndex
 - Qdrant
 - pgvector
@@ -381,7 +458,6 @@ After understanding the underlying mechanisms manually, the repository may explo
 - hybrid search
 - dedicated reranker models
 - conversational RAG
-- multi-agent workflows
 - LoRA / fine-tuning
 - production LLM serving
 
@@ -414,6 +490,13 @@ local-ai-learnings/
 ├── 001-ollama-fundamentals/
 ├── 002-manual-tool-calling-agent/
 ├── 003-pdf-rag-reader/
+├── 004-tool-orchestration/
+├── 005-research-agent/
+├── 006-sql-data-agent/
+├── 007-mcp-agent/
+├── 008-agent-evals-observability/
+├── 009-production-ai-service/
+├── 010-langgraph-workflows/
 ├── notes/
 ├── README.md
 └── .gitignore
