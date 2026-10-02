@@ -12,10 +12,10 @@
           <h2 id="documents-title">Documents</h2>
           <p>Your PDFs provide the context for each answer.</p>
         </header>
-        <div class="empty-state">
-          <h3>No documents yet</h3>
-          <p>Uploaded PDFs and their processing status will appear here.</p>
-        </div>
+        <p class="mock-notice">Demo mode · PDFs are simulated and cleared on reload.</p>
+        <DocumentUpload :uploading="uploading" @upload="upload" />
+        <p v-if="error" class="document-error api-error" role="alert">{{ error }}</p>
+        <DocumentList :documents="documents" :loading="loading" :deleting-ids="deletingIds" @delete="remove" />
       </section>
 
       <section class="panel chat-panel" aria-labelledby="chat-title">
@@ -32,3 +32,12 @@
     </main>
   </div>
 </template>
+
+<script setup lang="ts">
+import DocumentUpload from './components/DocumentUpload.vue'
+import DocumentList from './components/DocumentList.vue'
+import { useDocuments } from './composables/useDocuments'
+
+const { documents, loading, uploading, deletingIds, error, upload, remove } = useDocuments()
+</script>
+

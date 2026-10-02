@@ -28,8 +28,25 @@ Implement and review one unit at a time:
 5. **Backend integration:** agree on response shapes, connect HTTP endpoints,
    poll document status, and handle API failures with useful recovery actions.
 
-Current progress: unit 1 is implemented. Upload and chat controls arrive in
-units 2 and 3; the current screen only shows the layout and empty states.
+Current progress: units 1 and 2 are implemented. Documents use an in-memory mock
+service; chat controls arrive in unit 3. No PDF content is uploaded or indexed
+yet, and reloading the page clears the mock documents.
+
+### Reviewing Unit 2
+
+- Select a nonempty `.pdf` file. It appears as Processing, then Ready after
+  approximately three seconds plus the next status refresh.
+- Select a file named `example.fail.pdf` to simulate failed processing.
+- Delete a document in any state. It remains visible as Deleting until the mock
+  service confirms deletion.
+- Try an empty PDF or a non-PDF file (if the file picker allows it) to see a
+  validation error. The filename check is only preliminary UI validation;
+  actual PDF validation belongs to the backend.
+- Upload the same file again to confirm each upload gets its own document ID.
+- Reload the page to return to the empty state.
+
+The mock API lives in `src/services/api.ts`; document state and refresh cleanup
+live in `src/composables/useDocuments.ts`. No router or store library is needed.
 
 ## Local Development
 
