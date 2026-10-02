@@ -64,7 +64,10 @@ live in `src/composables/useDocuments.ts`. No router or store library is needed.
 
 Chat state lives in `src/composables/useChat.ts`, with typed responses and sources
 in `src/types/chat.ts`. `ChatWindow`, `ChatMessage`, `SourceList`, and
-`QuestionInput` handle presentation. Answers render as plain text.
+`QuestionInput` handle presentation. Assistant answers render Markdown through `markdown-it` and are sanitized with
+DOMPurify. User questions remain plain text; citations stay separate. Headings,
+lists, tables, links, blockquotes, and fenced code blocks are supported. Raw HTML
+and image rendering are disabled. Code blocks do not yet have syntax highlighting.
 
 ### Reviewing Unit 4
 

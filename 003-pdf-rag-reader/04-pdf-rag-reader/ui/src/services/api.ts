@@ -63,7 +63,7 @@ export async function sendQuestion(question: string): Promise<ChatResponse> {
   if (!ready.length) throw new Error('Upload a PDF and wait until it is ready before asking a question.')
   const response: ChatResponse = {
     question: trimmed,
-    answer: `This is a demo response to “${trimmed}”. In the connected application, an answer will be generated from your indexed PDFs. The references below use example page numbers and are not evidence from your files.`,
+    answer: `**Demo answer**\n\nThis is a demo response to “${trimmed}”. In the connected application, an answer will be generated from your indexed PDFs. The references below use example page numbers and are not evidence from your files.`,
     sources: ready.slice(0, 2).map((document, index) => ({
       document_id: document.id,
       document_name: document.name,
