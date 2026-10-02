@@ -23,7 +23,8 @@
           <h2 id="chat-title">Chat</h2>
           <p>Explore your documents one question at a time.</p>
         </header>
-        <ChatWindow :messages="messages" :sending="sending" />
+        <ChatWindow :messages="messages" :sending="sending" :loading-history="loadingHistory"
+          :history-ready="historyReady" :has-more="hasMore" :history-error="historyError" @load-older="loadHistory" />
         <p v-if="chatError" class="document-error api-error" role="alert">{{ chatError }}</p>
         <QuestionInput v-model="question" :sending="sending" :can-send="canSend" @send="sendIfReady" />
       </section>
@@ -41,8 +42,8 @@ import DocumentList from './components/DocumentList.vue'
 import { useDocuments } from './composables/useDocuments'
 
 const { documents, loading, uploading, deletingIds, error, upload, remove } = useDocuments()
-const { messages, question, sending, error: chatError, send } = useChat()
-const canSend = computed(() => documents.value.some((document) => document.status === 'ready' && !deletingIds.value.has(document.id)))
+const { messages, question, sending, error: chatError, send, historyError, loadingHistory, historyReady, hasMore, loadHistory } = useChat()
+const canSend = computed(() => historyReady.value && !loadingHistory.value && documents.value.some((document) => document.status === 'ready' && !deletingIds.value.has(document.id)))
 function sendIfReady() {
   if (canSend.value) void send()
 }

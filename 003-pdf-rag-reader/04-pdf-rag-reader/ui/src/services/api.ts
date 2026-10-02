@@ -1,4 +1,4 @@
-import type { ChatResponse } from '../types/chat'
+import type { ChatMessage, ChatHistoryPage, ChatResponse } from '../types/chat'
 import type { PdfDocument } from '../types/document'
 
 // Temporary in-memory service. Reloading the page clears uploaded documents.
@@ -38,6 +38,21 @@ export async function deleteDocument(id: string): Promise<void> {
   processingEnds.delete(id)
 }
 
+const historyKey = 'pdf-rag-demo-chat-v1'
+// The mock keeps history across reloads; document storage is still temporary.
+function readHistory(): ChatMessage[] {
+  const raw = localStorage.getItem(historyKey)
+  return raw ? JSON.parse(raw) : []
+}
+
+export async function listChatMessages(limit = 10, offset = 0): Promise<ChatHistoryPage> {
+  await delay(250)
+  const history = readHistory()
+  const end = Math.max(0, history.length - offset)
+  const start = Math.max(0, end - limit)
+  return { messages: history.slice(start, end), hasMore: start > 0 }
+}
+
 // Mock answers and page numbers demonstrate presentation only; no PDF is read.
 export async function sendQuestion(question: string): Promise<ChatResponse> {
   const trimmed = question.trim()
@@ -46,7 +61,7 @@ export async function sendQuestion(question: string): Promise<ChatResponse> {
   if (trimmed.toLowerCase() === '/fail') throw new Error('Simulated chat failure. Edit your question and send again.')
   const ready = documents.filter((document) => document.status === 'ready')
   if (!ready.length) throw new Error('Upload a PDF and wait until it is ready before asking a question.')
-  return {
+  const response: ChatResponse = {
     question: trimmed,
     answer: `This is a demo response to “${trimmed}”. In the connected application, an answer will be generated from your indexed PDFs. The references below use example page numbers and are not evidence from your files.`,
     sources: ready.slice(0, 2).map((document, index) => ({
@@ -56,4 +71,11 @@ export async function sendQuestion(question: string): Promise<ChatResponse> {
       page_end: index === 0 ? 1 : 3,
     })),
   }
+  const history = readHistory()
+  history.push(
+    { id: crypto.randomUUID(), role: 'user', content: trimmed },
+    { id: crypto.randomUUID(), role: 'assistant', content: response.answer, sources: response.sources },
+  )
+  localStorage.setItem(historyKey, JSON.stringify(history))
+  return response
 }

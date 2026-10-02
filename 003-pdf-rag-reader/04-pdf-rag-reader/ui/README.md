@@ -28,8 +28,8 @@ Implement and review one unit at a time:
 5. **Backend integration:** agree on response shapes, connect HTTP endpoints,
    poll document status, and handle API failures with useful recovery actions.
 
-Current progress: units 1–3 are implemented. Documents and chat use an in-memory
-mock service; loading previous chat history arrives in unit 4. No PDF content is uploaded or indexed
+Current progress: units 1–4 are implemented. Documents and chat use an in-memory
+mock service. Chat history persists in browser local storage. No PDF content is uploaded or indexed
 yet, and reloading the page clears the mock documents.
 
 ### Reviewing Unit 2
@@ -59,12 +59,31 @@ live in `src/composables/useDocuments.ts`. No router or store library is needed.
 - Submit `/fail` to simulate a chat error. The draft remains available to edit
   and resend; the failed turn is removed from the conversation.
 - While waiting, input and Send are disabled to prevent duplicate requests.
-- New messages scroll into view. Reloading clears the conversation; persistent
-  history and loading older messages are outside this unit.
+- New messages scroll into view when you are near the bottom; reading older
+  messages keeps your position. Chat history survives reloads.
 
 Chat state lives in `src/composables/useChat.ts`, with typed responses and sources
 in `src/types/chat.ts`. `ChatWindow`, `ChatMessage`, `SourceList`, and
 `QuestionInput` handle presentation. Answers render as plain text.
+
+### Reviewing Unit 4
+
+- Send at least six questions to create more than ten messages, then reload.
+  The latest ten messages load in chronological order, scrolled to the bottom.
+- Scroll to the top or select **Load older messages**. Older messages are
+  prepended while preserving the visible message position.
+- Continue until **Beginning of conversation** appears. Sending another question
+  updates the history offset so older pages do not repeat the new turn.
+- History loading and errors have separate states; use **Retry history** after
+  a storage failure. Sending pauses during history requests.
+- Mock history uses local storage key `pdf-rag-demo-chat-v1`. Clear that key in
+  browser developer tools to reset the conversation. PDFs still clear on reload,
+  so upload again before sending new questions. Old citations remain historical.
+
+The mock history endpoint uses message-based `limit` and `offset` (not turns),
+with offsets counted from newest, each returned page ordered oldest to newest,
+plus `hasMore`. This contract must be agreed with the backend in unit 5.
+Concurrent tabs are outside this mock's scope.
 
 ## Local Development
 

@@ -17,3 +17,8 @@ export interface ChatMessage {
   content: string
   sources?: Source[]
 }
+
+export interface ChatHistoryPage {
+  messages: ChatMessage[]
+  hasMore: boolean
+}
