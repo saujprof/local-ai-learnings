@@ -1,3 +1,4 @@
+import type { ChatResponse } from '../types/chat'
 import type { PdfDocument } from '../types/document'
 
 // Temporary in-memory service. Reloading the page clears uploaded documents.
@@ -35,4 +36,24 @@ export async function deleteDocument(id: string): Promise<void> {
   if (index === -1) throw new Error('Document not found. Refresh the document list and try again.')
   documents.splice(index, 1)
   processingEnds.delete(id)
+}
+
+// Mock answers and page numbers demonstrate presentation only; no PDF is read.
+export async function sendQuestion(question: string): Promise<ChatResponse> {
+  const trimmed = question.trim()
+  if (!trimmed) throw new Error('Enter a question.')
+  await delay(1200)
+  if (trimmed.toLowerCase() === '/fail') throw new Error('Simulated chat failure. Edit your question and send again.')
+  const ready = documents.filter((document) => document.status === 'ready')
+  if (!ready.length) throw new Error('Upload a PDF and wait until it is ready before asking a question.')
+  return {
+    question: trimmed,
+    answer: `This is a demo response to “${trimmed}”. In the connected application, an answer will be generated from your indexed PDFs. The references below use example page numbers and are not evidence from your files.`,
+    sources: ready.slice(0, 2).map((document, index) => ({
+      document_id: document.id,
+      document_name: document.name,
+      page_start: index === 0 ? 1 : 2,
+      page_end: index === 0 ? 1 : 3,
+    })),
+  }
 }

@@ -28,8 +28,8 @@ Implement and review one unit at a time:
 5. **Backend integration:** agree on response shapes, connect HTTP endpoints,
    poll document status, and handle API failures with useful recovery actions.
 
-Current progress: units 1 and 2 are implemented. Documents use an in-memory mock
-service; chat controls arrive in unit 3. No PDF content is uploaded or indexed
+Current progress: units 1–3 are implemented. Documents and chat use an in-memory
+mock service; loading previous chat history arrives in unit 4. No PDF content is uploaded or indexed
 yet, and reloading the page clears the mock documents.
 
 ### Reviewing Unit 2
@@ -47,6 +47,24 @@ yet, and reloading the page clears the mock documents.
 
 The mock API lives in `src/services/api.ts`; document state and refresh cleanup
 live in `src/composables/useDocuments.ts`. No router or store library is needed.
+
+### Reviewing Unit 3
+
+- Upload a PDF and wait for Ready. Question input is disabled until a document
+  is ready, and blank questions cannot be sent.
+- Send a question. Your message appears immediately, followed by a waiting
+  indicator and then a clearly labeled demo answer with separate sources.
+- Upload two PDFs to see both single-page and page-range citation formatting.
+  Page numbers are simulated; the mock service does not read PDF content.
+- Submit `/fail` to simulate a chat error. The draft remains available to edit
+  and resend; the failed turn is removed from the conversation.
+- While waiting, input and Send are disabled to prevent duplicate requests.
+- New messages scroll into view. Reloading clears the conversation; persistent
+  history and loading older messages are outside this unit.
+
+Chat state lives in `src/composables/useChat.ts`, with typed responses and sources
+in `src/types/chat.ts`. `ChatWindow`, `ChatMessage`, `SourceList`, and
+`QuestionInput` handle presentation. Answers render as plain text.
 
 ## Local Development
 

@@ -23,21 +23,28 @@
           <h2 id="chat-title">Chat</h2>
           <p>Explore your documents one question at a time.</p>
         </header>
-        <div class="empty-state chat-empty-state">
-          <span class="empty-symbol" aria-hidden="true">?</span>
-          <h3>Start with a question</h3>
-          <p>Once a PDF is ready, ask about its contents. Answers and PDF page references will appear here.</p>
-        </div>
+        <ChatWindow :messages="messages" :sending="sending" />
+        <p v-if="chatError" class="document-error api-error" role="alert">{{ chatError }}</p>
+        <QuestionInput v-model="question" :sending="sending" :can-send="canSend" @send="sendIfReady" />
       </section>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import ChatWindow from './components/ChatWindow.vue'
+import QuestionInput from './components/QuestionInput.vue'
+import { useChat } from './composables/useChat'
 import DocumentUpload from './components/DocumentUpload.vue'
 import DocumentList from './components/DocumentList.vue'
 import { useDocuments } from './composables/useDocuments'
 
 const { documents, loading, uploading, deletingIds, error, upload, remove } = useDocuments()
+const { messages, question, sending, error: chatError, send } = useChat()
+const canSend = computed(() => documents.value.some((document) => document.status === 'ready' && !deletingIds.value.has(document.id)))
+function sendIfReady() {
+  if (canSend.value) void send()
+}
 </script>
 
