@@ -1,0 +1,40 @@
+name: pdf-rag-v4
+
+services:
+  backend:
+    build: ./be
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    environment:
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-qwen3:8b}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-qwen3-embedding:8b}
+      QDRANT_URL: http://qdrant:6333
+      UPLOADS_DIR: /app/uploads
+      DATA_DIR: /app/data
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-52428800}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - uploads:/app/uploads
+      - backend_data:/app/data
+    depends_on:
+      qdrant:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  qdrant:
+    image: qdrant/qdrant:v1.13.6
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    # Reachable by backend over the Compose network; no host port needed.
+
+volumes:
+  uploads:
+  backend_data:
+  qdrant_storage:

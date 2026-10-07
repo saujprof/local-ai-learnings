@@ -13,7 +13,7 @@ Runtime          -> Docker Compose for backend + Qdrant
 
 ## Implementation Units
 
-Implement and review one unit at a time. Units 1 and 2 are implemented; units 3–12 are pending.
+Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–12 are pending.
 
 The request/response shapes, status codes, pagination, and error format are
 defined in [API_CONTRACT.md](API_CONTRACT.md). The health endpoint is implemented; document and chat routes remain pending.
