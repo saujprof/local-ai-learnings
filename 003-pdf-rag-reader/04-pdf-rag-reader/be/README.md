@@ -13,10 +13,10 @@ Runtime          -> Docker Compose for backend + Qdrant
 
 ## Implementation Units
 
-Implement and review one unit at a time. Unit 1 is complete; units 2–12 are pending.
+Implement and review one unit at a time. Units 1 and 2 are implemented; units 3–12 are pending.
 
 The request/response shapes, status codes, pagination, and error format are
-defined in [API_CONTRACT.md](API_CONTRACT.md). No routes are implemented yet.
+defined in [API_CONTRACT.md](API_CONTRACT.md). The health endpoint is implemented; document and chat routes remain pending.
 UI units 1–4 already use mocks; real UI integration remains deferred until the
 backend APIs are ready.
 
@@ -58,6 +58,44 @@ backend APIs are ready.
   can be a separate follow-up after the end-to-end flow works.
 - Add focused checks with each behavior change, and document how to review each
   completed unit. Do not mark live integration checks passed using mocks alone.
+
+## Running the Backend Locally (Unit 2)
+
+Requires Python 3.11 or newer. From the `be` directory:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-dev.txt
+cp .env.example .env
+uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
+```
+
+- `GET http://127.0.0.1:8000/health` returns `{"status":"ok"}`.
+- Interactive API docs: `http://127.0.0.1:8000/api-docs`.
+- OpenAPI schema: `http://127.0.0.1:8000/openapi.json`.
+- `/docs` and `/chat` are not implemented yet.
+
+Health is a liveness check, not proof that Qdrant or Ollama is reachable.
+No external service is required to start this unit. Docker comes in unit 3.
+
+Settings load from `.env` in the working directory; environment variables take
+precedence. See `.env.example` for local defaults. URL schemes, model names, and
+positive upload limits are validated at startup. Relative storage paths resolve
+from the working directory. Storage directories are not created until the
+persistence units. For containers, configure service/host-gateway URLs in unit 3.
+
+Run focused checks:
+
+```sh
+python -m pytest -q
+```
+
+Checks cover health/docs routes, configuration validation and precedence, and
+consistent validation/HTTP/application/unexpected-error envelopes. API errors do
+not expose unexpected exception details to clients. The current dependency files
+specify compatible version ranges; a reproducible dependency lock can be added
+with the container setup.
 
 ## Responsibilities
 

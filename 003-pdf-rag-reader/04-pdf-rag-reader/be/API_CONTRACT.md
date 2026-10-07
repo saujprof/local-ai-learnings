@@ -1,7 +1,8 @@
 # V4 API contract
 
-This is the contract for the first backend implementation. Routes are not yet
-implemented. Paths have no API prefix; deployment proxies may add one.
+This is the contract for the first backend implementation. Document and chat routes are not yet
+implemented. GET /health is implemented as a liveness endpoint returning
+200 with `{"status":"ok"}`. Paths have no API prefix; deployment proxies may add one.
 JSON field names are case-sensitive. IDs are opaque strings. Timestamps, when
 present, are UTC ISO 8601 strings. No authentication is required in V4.
 
