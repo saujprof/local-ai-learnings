@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
 from app.config import Settings
+from app.storage.repositories import ChatRepository, DocumentRepository
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,8 @@ def error_response(status: int, code: str, message: str, headers=None):
 def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title='PDF RAG API', docs_url='/api-docs', redoc_url=None)
     app.state.settings = settings if settings is not None else Settings()
+    app.state.documents = DocumentRepository(app.state.settings.data_dir)
+    app.state.chat_history = ChatRepository(app.state.settings.data_dir)
 
     @app.exception_handler(APIError)
     async def application_error(_request: Request, exc: APIError):

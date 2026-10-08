@@ -13,7 +13,7 @@ Runtime          -> Docker Compose for backend + Qdrant
 
 ## Implementation Units
 
-Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–12 are pending.
+Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; unit 4 is implemented; units 5–12 are pending.
 
 The request/response shapes, status codes, pagination, and error format are
 defined in [API_CONTRACT.md](API_CONTRACT.md). The health endpoint is implemented; document and chat routes remain pending.
@@ -96,6 +96,43 @@ consistent validation/HTTP/application/unexpected-error envelopes. API errors do
 not expose unexpected exception details to clients. The current dependency files
 specify compatible version ranges; a reproducible dependency lock can be added
 with the container setup.
+
+## Local Persistence (Unit 4)
+
+`app/storage/repositories.py` provides document and chat repositories, available
+as `app.state.documents` and `app.state.chat_history`. They use the configured
+`DATA_DIR` for `documents.json` and `chat_history.json`. Directories/files are
+created on the first write, and existing records are loaded on each operation.
+
+Document operations support add, get, newest-first list, status update, and
+registry removal. Removing a registry record does not delete PDFs or vectors;
+that coordination belongs to the later lifecycle service. These are internal
+records containing storage paths; future routes must project public fields.
+
+Chat writes append a whole completed question/answer pair atomically, assigning
+stable IDs and UTC timestamps. Pages follow the API contract's message offsets
+and chronological page order. Citations remain stored with the answer.
+
+A shared lock per resolved file path protects read-modify-write operations
+across threads and repository instances in one process. Writes flush and fsync a
+temporary file in the same directory, then atomically replace the destination.
+Failed replacement preserves the previous file and cleans up the temporary file.
+Invalid stored data raises `StorageError` and is never silently reset.
+
+Run one backend worker. Locks do not coordinate separate processes, containers,
+or external file editors. Atomic replacement prevents partial JSON files, but
+this is not a transactional database or a guarantee against all power-loss
+scenarios. Async routes should call these blocking repositories in a thread pool.
+
+Review checks:
+
+```sh
+python -m pytest tests/test_storage.py -q
+```
+
+Tests cover repository recreation, lifecycle updates, concurrent instances,
+history pagination, failed replacement, and corrupt-file preservation. Document
+and chat HTTP endpoints remain pending.
 
 ## Responsibilities
 
