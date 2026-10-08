@@ -12,8 +12,8 @@ def test_health_and_documentation():
         assert client.get('/health').status_code == 200
         assert client.get('/api-docs').status_code == 200
         assert '/health' in client.get('/openapi.json').json()['paths']
-        assert client.get('/docs').status_code == 404
-        assert client.get('/docs').json()['error']['code'] == 'not_found'
+        assert client.get('/missing').status_code == 404
+        assert client.get('/missing').json()['error']['code'] == 'not_found'
         assert client.post('/health').status_code == 405
 
 

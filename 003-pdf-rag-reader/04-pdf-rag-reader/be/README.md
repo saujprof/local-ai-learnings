@@ -13,10 +13,10 @@ Runtime          -> Docker Compose for backend + Qdrant
 
 ## Implementation Units
 
-Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; unit 4 is implemented; units 5–12 are pending.
+Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4 and 5 are implemented; units 6–12 are pending.
 
 The request/response shapes, status codes, pagination, and error format are
-defined in [API_CONTRACT.md](API_CONTRACT.md). The health endpoint is implemented; document and chat routes remain pending.
+defined in [API_CONTRACT.md](API_CONTRACT.md). Health and local document routes are implemented; chat routes remain pending.
 UI units 1–4 already use mocks; real UI integration remains deferred until the
 backend APIs are ready.
 
@@ -74,7 +74,7 @@ uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
 - `GET http://127.0.0.1:8000/health` returns `{"status":"ok"}`.
 - Interactive API docs: `http://127.0.0.1:8000/api-docs`.
 - OpenAPI schema: `http://127.0.0.1:8000/openapi.json`.
-- `/docs` and `/chat` are not implemented yet.
+- `/docs` supports upload, list, and local deletion; `/chat` is not implemented yet.
 
 Health is a liveness check, not proof that Qdrant or Ollama is reachable.
 No external service is required to start this unit. Docker comes in unit 3.
@@ -131,8 +131,37 @@ python -m pytest tests/test_storage.py -q
 ```
 
 Tests cover repository recreation, lifecycle updates, concurrent instances,
-history pagination, failed replacement, and corrupt-file preservation. Document
-and chat HTTP endpoints remain pending.
+history pagination, failed replacement, and corrupt-file preservation. Document endpoints are implemented in unit 5; chat HTTP endpoints remain pending.
+
+## Document APIs (Unit 5)
+
+`app/api/documents.py` implements upload, list, and local deletion. Reinstall
+`requirements-dev.txt` for the multipart parser and `pypdf`, or rebuild Docker.
+
+With the server running:
+
+```sh
+curl -F 'file=@/path/to/report.pdf' http://127.0.0.1:8000/docs
+curl http://127.0.0.1:8000/docs
+curl -i -X DELETE http://127.0.0.1:8000/docs/DOCUMENT_ID
+```
+
+Upload returns 202 and a Processing document after saving it and the registry.
+Names are display-only; files use generated IDs. Responses omit internal paths.
+Duplicate filenames are allowed. PDFs must be nonempty, parseable, unencrypted,
+and have at least one page. The configured byte limit applies to the uploaded
+file; multipart parsing occurs first, so this is not a network-level request-body
+limit. A deployment proxy can enforce a total request limit later.
+
+Deletion returns 204 after removing the PDF and registry entry. Missing files
+are tolerated on retry. A failed deletion keeps a Failed record with an error.
+Registry operations coordinate local concurrent requests within one process.
+
+Ingestion and vector deletion are not wired until unit 8. Documents therefore
+remain Processing in this unit. UI integration is still deferred.
+
+Tests cover upload validation/cleanup, unique IDs, hidden internal paths, restart
+persistence, deletion, and failure/retry. Run `python -m pytest -q`.
 
 ## Responsibilities
 

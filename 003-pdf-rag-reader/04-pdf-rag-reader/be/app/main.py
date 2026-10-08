@@ -9,6 +9,8 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
 from app.config import Settings
+from app.errors import APIError
+from app.api.documents import router as documents_router
 from app.storage.repositories import ChatRepository, DocumentRepository
 
 logger = logging.getLogger(__name__)
@@ -17,14 +19,6 @@ logger = logging.getLogger(__name__)
 class HealthResponse(BaseModel):
     status: Literal['ok'] = 'ok'
 
-
-class APIError(Exception):
-    """Expected application error with a safe public message."""
-
-    def __init__(self, status_code: int, code: str, message: str):
-        self.status_code = status_code
-        self.code = code
-        self.message = message
 
 
 def error_response(status: int, code: str, message: str, headers=None):
@@ -65,4 +59,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # Liveness only: external services are introduced in later units.
         return HealthResponse()
 
+    app.include_router(documents_router)
     return app
