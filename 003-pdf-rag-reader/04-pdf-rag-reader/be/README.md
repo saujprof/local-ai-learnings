@@ -13,7 +13,7 @@ Runtime          -> Docker Compose for backend + Qdrant
 
 ## Implementation Units
 
-Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4 and 5 are implemented; units 6–12 are pending.
+Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–6 are implemented; units 7–12 are pending.
 
 The request/response shapes, status codes, pagination, and error format are
 defined in [API_CONTRACT.md](API_CONTRACT.md). Health and local document routes are implemented; chat routes remain pending.
@@ -162,6 +162,36 @@ remain Processing in this unit. UI integration is still deferred.
 
 Tests cover upload validation/cleanup, unique IDs, hidden internal paths, restart
 persistence, deletion, and failure/retry. Run `python -m pytest -q`.
+
+## PDF Extraction and Chunking (Unit 6)
+
+`app/services/pdf_service.py` provides `extract_pages`, `chunk_pages`, and
+`process_pdf`. It uses the existing `pypdf` dependency and requires no external
+services. `process_pdf` returns typed chunks containing `document_id`,
+`document_name`, sequential zero-based `chunk_id`, `page_start`, `page_end`, and
+`text`. Use `dataclasses.asdict` when preparing vector payloads in unit 7.
+
+The initial strategy uses 1,000-character windows with 150-character overlap,
+configurable through function arguments. Whitespace is normalized before
+chunking. Chunks stay within a single page, so start/end page numbers are equal.
+Blank pages produce no chunks but retain their place in the one-based PDF page
+numbering. Unlike V3's cross-page packing, this favors simple, exact citations;
+windows can split words, and paragraph/table layout is not preserved.
+
+Unreadable, encrypted, or entirely text-free PDFs raise `PDFProcessingError`
+with useful messages. OCR is not included. The service only extracts/chunks;
+background jobs, embeddings, and status updates remain for later units.
+
+```python
+from pathlib import Path
+from app.services.pdf_service import process_pdf
+
+chunks = process_pdf(Path('uploads/example.pdf'), 'doc_123', 'example.pdf')
+```
+
+Run `python -m pytest tests/test_pdf_service.py -q` to review extraction from a
+real generated multi-page PDF, blank-page numbering, chunk overlap/coverage,
+invalid configuration, encryption, and unreadable/text-free inputs.
 
 ## Responsibilities
 
