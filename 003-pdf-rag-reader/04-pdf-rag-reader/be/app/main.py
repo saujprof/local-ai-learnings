@@ -1,5 +1,8 @@
 """FastAPI application factory. Run with uvicorn app.main:create_app --factory."""
 import logging
+from contextlib import asynccontextmanager
+from starlette.concurrency import run_in_threadpool
+from app.services.ingestion_service import IngestionService
 from typing import Literal
 
 from fastapi import FastAPI, Request
@@ -30,9 +33,15 @@ def error_response(status: int, code: str, message: str, headers=None):
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
-    app = FastAPI(title='PDF RAG API', docs_url='/api-docs', redoc_url=None)
+    @asynccontextmanager
+    async def lifespan(app):
+        await run_in_threadpool(app.state.ingestion.recover)
+        yield
+
+    app = FastAPI(title='PDF RAG API', docs_url='/api-docs', redoc_url=None, lifespan=lifespan)
     app.state.settings = settings if settings is not None else Settings()
     app.state.documents = DocumentRepository(app.state.settings.data_dir)
+    app.state.ingestion = IngestionService(app.state.settings, app.state.documents)
     app.state.chat_history = ChatRepository(app.state.settings.data_dir)
 
     @app.exception_handler(APIError)

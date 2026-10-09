@@ -53,6 +53,6 @@ class QdrantStore:
     def delete_document(self, document_id: str) -> None:
         if not document_id:
             raise ValueError('Document ID is required')
-        request(self.client, 'POST', self.path + '/points/delete', params={'wait': 'true'}, json={
+        request(self.client, 'POST', self.path + '/points/delete', allow_not_found=True, params={'wait': 'true'}, json={
             'filter': {'must': [{'key': 'document_id', 'match': {'value': document_id}}]},
         })

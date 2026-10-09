@@ -1,3 +1,6 @@
+import pytest
+from contextlib import contextmanager
+from unittest.mock import Mock
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
@@ -68,3 +71,15 @@ def test_delete_failure_is_retained_and_retryable(tmp_path):
         assert 'private details' not in response.text
         assert client.get('/docs').json()[0]['status'] == 'failed'
         assert client.delete('/docs/' + record['id']).status_code == 204
+
+
+@pytest.fixture(autouse=True)
+def local_vectors(monkeypatch):
+    @contextmanager
+    def clients(_):
+        yield Mock(), Mock()
+    from app.services.ingestion_service import IngestionService
+    original = IngestionService.__init__
+    def initialize(self, settings, repository):
+        original(self, settings, repository, clients=clients)
+    monkeypatch.setattr(IngestionService, '__init__', initialize)

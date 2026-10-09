@@ -13,7 +13,7 @@ Runtime          -> Docker Compose for backend + Qdrant
 
 ## Implementation Units
 
-Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–7 are implemented (unit 7 live integration pending); units 8–12 are pending.
+Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–7 are implemented (unit 7 live integration pending); unit 8 is implemented with live integration pending; units 9–12 are pending.
 
 The request/response shapes, status codes, pagination, and error format are
 defined in [API_CONTRACT.md](API_CONTRACT.md). Health and local document routes are implemented; chat routes remain pending.
@@ -157,8 +157,7 @@ Deletion returns 204 after removing the PDF and registry entry. Missing files
 are tolerated on retry. A failed deletion keeps a Failed record with an error.
 Registry operations coordinate local concurrent requests within one process.
 
-Ingestion and vector deletion are not wired until unit 8. Documents therefore
-remain Processing in this unit. UI integration is still deferred.
+Ingestion and vector deletion are not wired until unit 8. At this earlier milestone documents stayed Processing; unit 8 now connects ingestion. UI integration is still deferred.
 
 Tests cover upload validation/cleanup, unique IDs, hidden internal paths, restart
 persistence, deletion, and failure/retry. Run `python -m pytest -q`.
@@ -233,6 +232,34 @@ included; partial-batch cleanup and lifecycle coordination belong to unit 8.
 
 API references: [Ollama embeddings](https://github.com/ollama/ollama/blob/main/docs/capabilities/embeddings.mdx),
 [Qdrant API](https://api.qdrant.tech/api-reference).
+
+## Ingestion Lifecycle (Unit 8)
+
+Uploads now schedule synchronous FastAPI background tasks after the 202 response.
+The task extracts chunks, embeds/upserts bounded batches, then marks Ready.
+Failures mark Failed and attempt to remove partial vectors. Failed cleanup is
+reported in the document error; retry DELETE to finish cleanup. No task queue or
+automatic retry is introduced.
+
+`IngestionService` serializes ingestion and deletion work in one backend process.
+A delete marks Deleting immediately, waits for active work, removes vectors,
+then removes the PDF and registry entry. A queued ingestion skips deleted or
+non-Processing records. Active ingestion checks status between batches; deletion
+cannot confirm success while an ingestion can still write vectors. Concurrent
+DELETE requests for a Deleting record return 409. The shared work lock means a
+delete may also wait behind another document's active batch/job.
+
+Startup changes interrupted Processing/Deleting records to Failed, without
+requiring external services to be online. Existing partial vectors are retained
+until successful deletion; delete/reupload is the recovery action. The later
+retrieval service must restrict evidence to Ready document IDs. Run one worker.
+Missing Qdrant collections are treated as already clean during deletion.
+
+Review: upload a text PDF, poll GET /docs until Ready, then delete it. Try a blank
+PDF for Failed; interrupt processing and restart for recovery. Confirm document
+vectors are absent after successful deletion. Live Ollama/Qdrant verification
+remains pending; automated tests use controlled clients, including concurrent
+deletion, partial-write failure, cleanup retry, and restart recovery.
 
 ## Responsibilities
 
