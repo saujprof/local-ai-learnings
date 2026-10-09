@@ -31,3 +31,11 @@ def retrieval_client(settings: Settings, repository):
             RerankerService(embeddings.client, settings.ollama_chat_model),
             settings.retrieval_top_k, settings.retrieval_relative_threshold, settings.retrieval_final_k,
         )
+
+
+@contextmanager
+def answer_client(settings: Settings):
+    from app.services.llm_service import AnswerService
+
+    with httpx.Client(base_url=str(settings.ollama_url), timeout=settings.dependency_timeout_seconds) as client:
+        yield AnswerService(client, settings.ollama_chat_model)

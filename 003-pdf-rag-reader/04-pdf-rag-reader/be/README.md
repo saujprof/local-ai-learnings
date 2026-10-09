@@ -13,7 +13,7 @@ Runtime          -> Docker Compose for backend + Qdrant
 
 ## Implementation Units
 
-Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–7 are implemented (unit 7 live integration pending); unit 8 is implemented with live integration pending; unit 9 is implemented with live relevance verification pending; units 10–12 are pending.
+Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–7 are implemented (unit 7 live integration pending); unit 8 is implemented with live integration pending; unit 9 is implemented with live relevance verification pending; unit 10 is implemented with live answer-quality verification pending; units 11–12 are pending.
 
 The request/response shapes, status codes, pagination, and error format are
 defined in [API_CONTRACT.md](API_CONTRACT.md). Health and local document routes are implemented; chat routes remain pending.
@@ -295,6 +295,36 @@ Run `python -m pytest tests/test_retrieval.py tests/test_vectors.py -q` for
 controlled filtering, ready-document restriction, reranking, malformed output,
 and deletion-during-reranking checks. Live Ollama/Qdrant relevance verification
 remains pending.
+
+## Grounded Answer Generation (Unit 10)
+
+`AnswerService` in `app/services/llm_service.py` generates Markdown answers from
+retrieved passages. Use `answer_client(settings)` from `vector_clients` to open
+and close the Ollama client. Call `answer(question, evidence)` with retrieval
+hits; the result matches the planned POST /chat response.
+
+The prompt treats PDF text as untrusted evidence and requests structured output
+containing an answer and passage indices. The backend validates those indices
+and resolves them to stored document/page metadata. Model-generated citation
+metadata is never used. Malformed output returns a dependency error rather than
+an unchecked answer. Metadata validation does not prove semantic grounding;
+real model answer quality still requires live review.
+
+No usable evidence skips the model and returns a fixed no-evidence answer with
+empty sources. A model response selecting no sources produces the same fallback,
+even if it also supplied unsupported prose. This unit does not save history or
+expose a chat route; unit 11 provides that orchestration.
+
+```python
+from app.services.vector_clients import answer_client
+
+with answer_client(settings) as answers:
+    response = answers.answer(question, evidence)
+```
+
+Run `python -m pytest tests/test_answers.py tests/test_retrieval.py -q` for
+controlled answer/citation, no-evidence, abstention, and invalid-output checks.
+Live Ollama answer-quality verification remains pending.
 
 ## Responsibilities
 
