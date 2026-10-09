@@ -40,13 +40,18 @@ class QdrantStore:
             ]
             request(self.client, 'PUT', self.path + '/points', params={'wait': 'true'}, json={'points': points})
 
-    def search(self, vector: list[float], limit: int = 10) -> list[dict]:
+    def search(self, vector: list[float], limit: int = 10, document_ids: list[str] | None = None) -> list[dict]:
         validate_vectors([vector], 1)
         if not 1 <= limit <= 100:
             raise ValueError('limit must be between 1 and 100')
+        if document_ids == []:
+            return []
+        query_filter = {} if document_ids is None else {
+            'filter': {'must': [{'key': 'document_id', 'match': {'any': document_ids}}]},
+        }
         self.ensure_collection(len(vector))
         response = request(self.client, 'POST', self.path + '/points/query', json={
-            'query': vector, 'limit': limit, 'with_payload': True, 'with_vector': False,
+            'query': vector, 'limit': limit, 'with_payload': True, 'with_vector': False, **query_filter,
         })
         return response.json()['result']['points']
 

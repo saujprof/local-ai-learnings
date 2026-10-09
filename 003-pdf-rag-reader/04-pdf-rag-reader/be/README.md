@@ -13,7 +13,7 @@ Runtime          -> Docker Compose for backend + Qdrant
 
 ## Implementation Units
 
-Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–7 are implemented (unit 7 live integration pending); unit 8 is implemented with live integration pending; units 9–12 are pending.
+Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–7 are implemented (unit 7 live integration pending); unit 8 is implemented with live integration pending; unit 9 is implemented with live relevance verification pending; units 10–12 are pending.
 
 The request/response shapes, status codes, pagination, and error format are
 defined in [API_CONTRACT.md](API_CONTRACT.md). Health and local document routes are implemented; chat routes remain pending.
@@ -260,6 +260,41 @@ PDF for Failed; interrupt processing and restart for recovery. Confirm document
 vectors are absent after successful deletion. Live Ollama/Qdrant verification
 remains pending; automated tests use controlled clients, including concurrent
 deletion, partial-write failure, cleanup retry, and restart recovery.
+
+## Retrieval and Reranking (Unit 9)
+
+`retrieval_client(settings, repository)` from `app.services.vector_clients`
+provides a configured `RetrievalService`. Call `retrieve(question)` to receive
+ranked Qdrant hits containing scores and original citation payloads. This is a
+service only; answer generation and POST /chat arrive in units 10 and 11.
+
+The service embeds the question and requests Top-K hits with a Qdrant filter for
+Ready document IDs. It drops unusable/nonpositive scores and empty text, retains
+scores at least `best_score * RETRIEVAL_RELATIVE_THRESHOLD`, then asks Ollama to
+rank candidate indices. Returned indices must be unique integers from the input.
+Malformed output falls back to similarity order; a valid empty selection means
+no evidence. Network failures/timeouts propagate as dependency errors. Ready
+status is checked again after reranking to exclude documents deleted meanwhile.
+
+Defaults: `RETRIEVAL_TOP_K=10`, `RETRIEVAL_RELATIVE_THRESHOLD=0.7`, and
+`RETRIEVAL_FINAL_K=4`. Final K cannot exceed Top-K. Relative filtering does not
+establish factual relevance by itself; live retrieval quality still needs review.
+
+```python
+from app.config import Settings
+from app.storage.repositories import DocumentRepository
+from app.services.vector_clients import retrieval_client
+
+settings = Settings()
+with retrieval_client(settings, DocumentRepository(settings.data_dir)) as retrieval:
+    evidence = retrieval.retrieve('What is the refund policy?')
+    print(evidence)
+```
+
+Run `python -m pytest tests/test_retrieval.py tests/test_vectors.py -q` for
+controlled filtering, ready-document restriction, reranking, malformed output,
+and deletion-during-reranking checks. Live Ollama/Qdrant relevance verification
+remains pending.
 
 ## Responsibilities
 

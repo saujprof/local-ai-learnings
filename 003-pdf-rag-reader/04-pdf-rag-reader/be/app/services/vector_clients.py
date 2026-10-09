@@ -18,3 +18,16 @@ def vector_clients(settings: Settings):
             EmbeddingService(ollama, settings.ollama_embedding_model, settings.embedding_batch_size),
             QdrantStore(qdrant, settings.qdrant_collection),
         )
+
+
+@contextmanager
+def retrieval_client(settings: Settings, repository):
+    from app.services.reranker_service import RerankerService
+    from app.services.retrieval_service import RetrievalService
+
+    with vector_clients(settings) as (embeddings, vectors):
+        yield RetrievalService(
+            repository, embeddings, vectors,
+            RerankerService(embeddings.client, settings.ollama_chat_model),
+            settings.retrieval_top_k, settings.retrieval_relative_threshold, settings.retrieval_final_k,
+        )
