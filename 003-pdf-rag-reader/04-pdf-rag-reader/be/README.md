@@ -13,7 +13,7 @@ Runtime          -> Docker Compose for backend + Qdrant
 
 ## Implementation Units
 
-Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–6 are implemented; units 7–12 are pending.
+Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–7 are implemented (unit 7 live integration pending); units 8–12 are pending.
 
 The request/response shapes, status codes, pagination, and error format are
 defined in [API_CONTRACT.md](API_CONTRACT.md). Health and local document routes are implemented; chat routes remain pending.
@@ -192,6 +192,47 @@ chunks = process_pdf(Path('uploads/example.pdf'), 'doc_123', 'example.pdf')
 Run `python -m pytest tests/test_pdf_service.py -q` to review extraction from a
 real generated multi-page PDF, blank-page numbering, chunk overlap/coverage,
 invalid configuration, encryption, and unreadable/text-free inputs.
+
+## Embeddings and Vector Storage (Unit 7)
+
+`EmbeddingService` uses Ollama `/api/embed` with batching and `truncate: false`.
+Empty text, invalid vectors, nonfinite values, and inconsistent dimensions are
+rejected. Network failures/timeouts map to the API's 503/504 errors.
+
+`QdrantStore` creates an unnamed cosine collection using the actual vector size,
+checks existing collection dimensions, upserts chunks with deterministic UUID
+point IDs, queries Top-K points with payloads, and deletes by `document_id`.
+Writes use `wait=true`. Repeated upserts replace matching document/chunk IDs.
+Reindexing fewer chunks still requires deleting old document points first.
+Use a new collection and reindex when changing embedding models, even when their
+vector dimensions match. Never mix embeddings from different models.
+
+Configure `QDRANT_COLLECTION`, `DEPENDENCY_TIMEOUT_SECONDS`, and
+`EMBEDDING_BATCH_SIZE` in the appropriate local/Compose environment file.
+Synchronous clients are scoped and closed with `vector_clients(settings)`;
+call from a worker thread in future asynchronous ingestion.
+
+```python
+from pathlib import Path
+from app.config import Settings
+from app.services.pdf_service import process_pdf
+from app.services.vector_clients import vector_clients
+
+chunks = process_pdf(Path('uploads/example.pdf'), 'example-id', 'example.pdf')
+with vector_clients(Settings()) as (embeddings, vectors):
+    vectors.upsert(chunks, embeddings.embed([chunk.text for chunk in chunks]))
+    hits = vectors.search(embeddings.embed(['What does this document describe?'])[0])
+    print(hits)
+    vectors.delete_document('example-id')
+```
+
+Run `python -m pytest tests/test_vectors.py -q` for HTTP transport tests. Live
+Ollama/Qdrant checks remain pending because neither service was reachable at the
+default local ports during implementation. No ingestion or HTTP route wiring is
+included; partial-batch cleanup and lifecycle coordination belong to unit 8.
+
+API references: [Ollama embeddings](https://github.com/ollama/ollama/blob/main/docs/capabilities/embeddings.mdx),
+[Qdrant API](https://api.qdrant.tech/api-reference).
 
 ## Responsibilities
 
