@@ -1,7 +1,7 @@
 # Remaining integration work
 
 Backend units 1–11 and the mock UI are implemented. Split unit 12 into the
-following reviewable units. Unit 12.1 is implemented and its HTTP checks and UI build pass. Unit 12.2 implementation is complete; live document lifecycle review remains pending. Units 12.3–12.6 are pending. Implement and review
+following reviewable units. Unit 12.1 is implemented and its HTTP checks and UI build pass. Unit 12.2 implementation is complete; live document lifecycle review remains pending. Unit 12.3 implementation is complete; live chat/history review remains pending. Units 12.4–12.6 are pending. Implement and review
 one unit at a time; update documentation alongside each change.
 
 ## 12.1 — HTTP client and development configuration

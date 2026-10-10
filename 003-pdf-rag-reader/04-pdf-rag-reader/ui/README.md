@@ -31,7 +31,7 @@ Implement and review one unit at a time:
    poll document status, and handle API failures with useful recovery actions.
 
 Current progress: document operations now use the real backend (integration
-unit 12.2). Chat answers and history remain mocked until unit 12.3.
+unit 12.2). Chat and history now use the real backend (integration unit 12.3).
 
 ### Reviewing real document operations (12.2)
 
@@ -54,45 +54,29 @@ started before a completed mutation cannot overwrite it. Upload filename/empty
 checks are preliminary; PDF validation is backend-owned. `.fail.pdf` no longer
 has special behavior. Live lifecycle verification remains pending.
 
-### Reviewing Unit 3
+### Reviewing real chat and history (12.3)
 
-- Upload a PDF and wait for Ready. Question input is disabled until a document
-  is ready, and blank questions cannot be sent.
-- Send a question. Your message appears immediately, followed by a waiting
-  indicator and then a clearly labeled demo answer with separate sources.
-- Upload two PDFs to see both single-page and page-range citation formatting.
-  Page numbers are simulated; the mock service does not read PDF content.
-- Submit `/fail` to simulate a chat error. The draft remains available to edit
-  and resend; the failed turn is removed from the conversation.
-- While waiting, input and Send are disabled to prevent duplicate requests.
-- New messages scroll into view when you are near the bottom; reading older
-  messages keeps your position. Chat history survives reloads.
+Chat now uses POST /chat and paginated GET /chat. No simulated answers,
+filename triggers, `/fail` commands, or browser-stored history remain in the
+service. Old `pdf-rag-demo-chat-v1` browser data is ignored.
 
-Chat state lives in `src/composables/useChat.ts`, with typed responses and sources
-in `src/types/chat.ts`. `ChatWindow`, `ChatMessage`, `SourceList`, and
-`QuestionInput` handle presentation. Assistant answers render Markdown through `markdown-it` and are sanitized with
-DOMPurify. User questions remain plain text; citations stay separate. Headings,
-lists, tables, links, blockquotes, and fenced code blocks are supported. Raw HTML
-and image rendering are disabled. Code blocks do not yet have syntax highlighting.
+- Upload a PDF and wait until Ready, then send a question.
+- Verify Markdown answers and backend-owned PDF/page citations.
+- Reload to retrieve persisted messages. Scroll upward to load older pages.
+- Use Refresh history to replace the conversation with the latest ten stored
+  messages and reset pagination. This does not clear the draft.
+- Backend errors are displayed using their message. Failed sends retain the
+  draft and remove the temporary question from the conversation.
+- A network failure or server error blocks sending until history refresh succeeds.
+  Inspect the refreshed conversation before retrying. A refresh is a snapshot:
+  the original request may still be processing, so it cannot guarantee that a
+  retry will never duplicate a turn. Requests are never automatically resent.
+- Initial/older-history failures support retry. The backend limits questions to
+  10,000 characters; the input enforces the same limit.
 
-### Reviewing Unit 4
-
-- Send at least six questions to create more than ten messages, then reload.
-  The latest ten messages load in chronological order, scrolled to the bottom.
-- Scroll to the top or select **Load older messages**. Older messages are
-  prepended while preserving the visible message position.
-- Continue until **Beginning of conversation** appears. Sending another question
-  updates the history offset so older pages do not repeat the new turn.
-- History loading and errors have separate states; use **Retry history** after
-  a storage failure. Sending pauses during history requests.
-- Mock history uses local storage key `pdf-rag-demo-chat-v1`. Clear that key in
-  browser developer tools to reset the conversation. PDFs still clear on reload,
-  so upload again before sending new questions. Old citations remain historical.
-
-The mock history endpoint uses message-based `limit` and `offset` (not turns),
-with offsets counted from newest, each returned page ordered oldest to newest,
-plus `hasMore`. This contract must be agreed with the backend in unit 5.
-Concurrent tabs are outside this mock's scope.
+Successful sends use temporary UI message IDs until history is refreshed; offset
+advances by the two persisted messages. Backend IDs are used for loaded history.
+Browser scroll behavior and live answer/citation review remain for units 12.4–12.5.
 
 ## Local Development
 
@@ -354,7 +338,7 @@ The purpose of this UI is to make the RAG backend usable as a complete applicati
 
 ## HTTP foundation (integration unit 12.1)
 
-Axios is configured in `src/services/http.ts`. Document features now use this client; chat remains mocked until unit 12.3. `ApiError` retains the backend's message,
+Axios is configured in `src/services/http.ts`. Document features now use this client; chat and history also use this client. `ApiError` retains the backend's message,
 code, and HTTP status. Network failures on mutations are flagged `ambiguous` so
 later integration can reconcile state before retrying. Requests are never retried
 automatically. The default timeout is five minutes; callers can override it.
