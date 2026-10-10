@@ -1,5 +1,7 @@
 # 04 - Scalable PDF RAG
 
+Remaining work: [Unit 12 integration plan](INTEGRATION_PLAN.md).
+
 V4 turns the earlier RAG experiments into a small end-to-end application that someone can clone, run, upload PDFs to, and ask questions against.
 
 The goal is to move from a learning script to a **production-shaped RAG system** with clear application boundaries.

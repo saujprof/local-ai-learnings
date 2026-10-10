@@ -1,5 +1,7 @@
 # V4 Backend - PDF RAG API
 
+Remaining work: [Unit 12 integration plan](../INTEGRATION_PLAN.md).
+
 The V4 backend is a FastAPI service that handles PDF upload, document processing, vector storage, retrieval, chat, and citations.
 
 ```text

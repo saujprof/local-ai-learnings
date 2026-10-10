@@ -1,5 +1,7 @@
 # V4 UI - PDF RAG Chat
 
+Remaining work: [Unit 12 integration plan](../INTEGRATION_PLAN.md).
+
 The V4 frontend is a simple Vue 3 interface for uploading PDFs, managing indexed documents, asking questions, and viewing answers with citations.
 
 The UI should stay intentionally simple so the main learning remains focused on the RAG system.
@@ -345,3 +347,23 @@ V4 UI is intentionally not focused on:
 - admin dashboards
 
 The purpose of this UI is to make the RAG backend usable as a complete application.
+
+## HTTP foundation (integration unit 12.1)
+
+Axios is configured in `src/services/http.ts`. Document/chat features still use
+`api.ts` mocks until units 12.2/12.3. `ApiError` retains the backend's message,
+code, and HTTP status. Network failures on mutations are flagged `ambiguous` so
+later integration can reconcile state before retrying. Requests are never retried
+automatically. The default timeout is five minutes; callers can override it.
+A timeout does not cancel processing already started on the backend.
+
+Copy `.env.example` to `.env.local` if needed, then restart Vite. `/api` requests
+are proxied to `API_PROXY_TARGET` (default `http://127.0.0.1:8000`), stripping the
+prefix. This keeps development browser requests on the UI origin.
+
+For production, configure a reverse proxy for `/api`, or build with an absolute
+`VITE_API_BASE_URL` and configure matching backend CORS. The Vite development
+proxy is not a production deployment proxy. Never put secrets in VITE_ variables.
+
+Run `npm run test:http` with Node 22.18+ (native TypeScript stripping), and
+`npm run build` for TypeScript/build validation.
