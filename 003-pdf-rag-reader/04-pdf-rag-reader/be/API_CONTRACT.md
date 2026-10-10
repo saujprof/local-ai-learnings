@@ -1,7 +1,7 @@
 # V4 API contract
 
-This is the contract for the first backend implementation. Document routes and background ingestion/vector cleanup are implemented; chat
-routes remain pending. GET /health is implemented as a liveness endpoint returning
+This is the contract for the first backend implementation. Document lifecycle and chat/history routes are implemented. Live end-to-end
+verification and UI integration remain pending. GET /health is implemented as a liveness endpoint returning
 200 with `{"status":"ok"}`. Paths have no API prefix; deployment proxies may add one.
 JSON field names are case-sensitive. IDs are opaque strings. Timestamps, when
 present, are UTC ISO 8601 strings. No authentication is required in V4.
@@ -86,7 +86,7 @@ Request: `application/json`.
 ```
 
 `question` is required, must be a string, and must not be blank after trimming.
-Invalid input returns **422**. The backend trims the question. Only one chat
+Questions are limited to 10,000 characters. Invalid input returns **422**. The backend trims the question. Only one chat
 request runs at a time in this single-conversation V4 app; another concurrent
 request returns **409** rather than interleaving history turns.
 

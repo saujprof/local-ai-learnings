@@ -9,14 +9,19 @@ class RetrievalService:
         self.repository, self.embeddings, self.vectors, self.reranker = repository, embeddings, vectors, reranker
         self.top_k, self.relative_threshold, self.final_k = top_k, relative_threshold, final_k
 
-    def retrieve(self, question: str) -> list[dict]:
+    def retrieve(self, question: str, context: list[dict] | None = None) -> list[dict]:
         question = question.strip()
         if not question:
             raise ValueError('Question must not be blank')
         ready = {record['id'] for record in self.repository.list() if record['status'] == 'ready'}
         if not ready:
             return []
-        vector = self.embeddings.embed([question])[0]
+        search_question = question
+        if context:
+            recent_questions = [item['content'] for item in context if item['role'] == 'user']
+            if recent_questions:
+                search_question = 'Previous questions: ' + '\n'.join(recent_questions) + '\nCurrent question: ' + question
+        vector = self.embeddings.embed([search_question])[0]
         hits = self.vectors.search(vector, self.top_k, document_ids=sorted(ready))
         candidates = []
         seen = set()
@@ -37,7 +42,7 @@ class RetrievalService:
             return []
         cutoff = candidates[0]['score'] * self.relative_threshold
         candidates = [hit for hit in candidates if hit['score'] >= cutoff][:self.top_k]
-        ranked = self.reranker.rerank(question, candidates, self.final_k)
+        ranked = self.reranker.rerank(search_question, candidates, self.final_k)
         # A deletion may have started while the model was reranking.
         ready_now = {record['id'] for record in self.repository.list() if record['status'] == 'ready'}
         return [hit for hit in ranked if hit['payload']['document_id'] in ready_now]

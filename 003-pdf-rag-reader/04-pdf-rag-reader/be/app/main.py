@@ -12,6 +12,8 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
 from app.config import Settings
+from app.api.chat import router as chat_router
+from app.services.chat_service import ChatService
 from app.errors import APIError
 from app.api.documents import router as documents_router
 from app.storage.repositories import ChatRepository, DocumentRepository
@@ -44,6 +46,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.ingestion = IngestionService(app.state.settings, app.state.documents)
     app.state.chat_history = ChatRepository(app.state.settings.data_dir)
 
+    app.state.chat = ChatService(app.state.settings, app.state.documents, app.state.chat_history)
+
     @app.exception_handler(APIError)
     async def application_error(_request: Request, exc: APIError):
         return error_response(exc.status_code, exc.code, exc.message)
@@ -69,4 +73,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return HealthResponse()
 
     app.include_router(documents_router)
+    app.include_router(chat_router)
     return app

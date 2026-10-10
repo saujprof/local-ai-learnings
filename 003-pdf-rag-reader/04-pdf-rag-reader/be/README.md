@@ -13,7 +13,7 @@ Runtime          -> Docker Compose for backend + Qdrant
 
 ## Implementation Units
 
-Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–7 are implemented (unit 7 live integration pending); unit 8 is implemented with live integration pending; unit 9 is implemented with live relevance verification pending; unit 10 is implemented with live answer-quality verification pending; units 11–12 are pending.
+Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–7 are implemented (unit 7 live integration pending); unit 8 is implemented with live integration pending; unit 9 is implemented with live relevance verification pending; unit 10 is implemented with live answer-quality verification pending; unit 11 is implemented with live end-to-end verification pending; unit 12 is pending.
 
 The request/response shapes, status codes, pagination, and error format are
 defined in [API_CONTRACT.md](API_CONTRACT.md). Health and local document routes are implemented; chat routes remain pending.
@@ -74,7 +74,7 @@ uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
 - `GET http://127.0.0.1:8000/health` returns `{"status":"ok"}`.
 - Interactive API docs: `http://127.0.0.1:8000/api-docs`.
 - OpenAPI schema: `http://127.0.0.1:8000/openapi.json`.
-- `/docs` supports upload, list, and local deletion; `/chat` is not implemented yet.
+- `/docs` supports upload, list, and local deletion; `/chat` supports synchronous questions and paginated history.
 
 Health is a liveness check, not proof that Qdrant or Ollama is reachable.
 No external service is required to start this unit. Docker comes in unit 3.
@@ -325,6 +325,34 @@ with answer_client(settings) as answers:
 Run `python -m pytest tests/test_answers.py tests/test_retrieval.py -q` for
 controlled answer/citation, no-evidence, abstention, and invalid-output checks.
 Live Ollama answer-quality verification remains pending.
+
+## Chat APIs and History (Unit 11)
+
+POST /chat now validates a nonblank string question (maximum 10,000 characters),
+requires a Ready document, retrieves evidence, generates an answer, and saves
+both messages atomically before returning. A per-app nonblocking lock rejects
+concurrent chat requests with 409. Dependency failures do not persist a partial
+turn. As with earlier units, run only one backend worker.
+
+GET /chat supports `limit` (1–100) and `offset` (nonnegative), returning stable
+message IDs, chronological pages counted from newest, and `hasMore`. History
+survives restarts. Empty history returns an empty messages array.
+
+Recent conversation context is capped by `CHAT_CONTEXT_MESSAGES` (default 10)
+and total `CHAT_CONTEXT_CHARACTERS` (default 6000). Previous user questions help
+contextualize retrieval; bounded recent user/assistant text goes to generation
+as conversation context, never as PDF evidence. This simple approach is not a
+standalone-query rewrite or conversation summarizer.
+
+```sh
+curl -H 'Content-Type: application/json' -d '{"question":"What is the refund policy?"}' http://127.0.0.1:8000/chat
+curl 'http://127.0.0.1:8000/chat?limit=10&offset=0'
+```
+
+Run `python -m pytest -q`. Tests cover request validation, history pagination and
+restart, bounded context, concurrent-request rejection, no-ready-document errors,
+and failed-turn persistence. Live Ollama/Qdrant end-to-end verification remains
+pending. The UI continues to use mocks until unit 12.
 
 ## Responsibilities
 

@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     retrieval_relative_threshold: float = Field(default=0.7, ge=0, le=1)
     retrieval_final_k: int = Field(default=4, ge=1, le=100)
 
+    chat_context_messages: int = Field(default=10, ge=1, le=100)
+    chat_context_characters: int = Field(default=6000, ge=1)
+
     @model_validator(mode='after')
     def validate_retrieval_limits(self):
         if self.retrieval_final_k > self.retrieval_top_k:
