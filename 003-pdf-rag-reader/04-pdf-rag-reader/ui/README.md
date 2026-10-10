@@ -30,25 +30,29 @@ Implement and review one unit at a time:
 5. **Backend integration:** agree on response shapes, connect HTTP endpoints,
    poll document status, and handle API failures with useful recovery actions.
 
-Current progress: units 1–4 are implemented. Documents and chat use an in-memory
-mock service. Chat history persists in browser local storage. No PDF content is uploaded or indexed
-yet, and reloading the page clears the mock documents.
+Current progress: document operations now use the real backend (integration
+unit 12.2). Chat answers and history remain mocked until unit 12.3.
 
-### Reviewing Unit 2
+### Reviewing real document operations (12.2)
 
-- Select a nonempty `.pdf` file. It appears as Processing, then Ready after
-  approximately three seconds plus the next status refresh.
-- Select a file named `example.fail.pdf` to simulate failed processing.
-- Delete a document in any state. It remains visible as Deleting until the mock
-  service confirms deletion.
-- Try an empty PDF or a non-PDF file (if the file picker allows it) to see a
-  validation error. The filename check is only preliminary UI validation;
-  actual PDF validation belongs to the backend.
-- Upload the same file again to confirm each upload gets its own document ID.
-- Reload the page to return to the empty state.
+Start the backend and UI using the HTTP foundation instructions below.
 
-The mock API lives in `src/services/api.ts`; document state and refresh cleanup
-live in `src/composables/useDocuments.ts`. No router or store library is needed.
+- Upload a nonempty PDF. The UI sends multipart field `file` to POST /docs.
+- Observe Processing followed by Ready or Failed from the backend. Processing
+  requires the backend's Ollama and Qdrant dependencies.
+- Reload or use Refresh documents to load persisted documents.
+- Delete a document. Its row remains Deleting until the API confirms deletion.
+- Stop the backend to check list/refresh errors, then restart it and use Refresh
+  documents to retry. Polling pauses on a refresh failure.
+- After an upload timeout, refresh before uploading again: the first upload may
+  already have been saved. A failed deletion keeps its row; refresh to reconcile
+  the backend state before retrying.
+
+Status polling runs every three seconds while any document is Processing or
+Deleting and stops on unmount. Concurrent refreshes are suppressed; responses
+started before a completed mutation cannot overwrite it. Upload filename/empty
+checks are preliminary; PDF validation is backend-owned. `.fail.pdf` no longer
+has special behavior. Live lifecycle verification remains pending.
 
 ### Reviewing Unit 3
 
@@ -350,8 +354,7 @@ The purpose of this UI is to make the RAG backend usable as a complete applicati
 
 ## HTTP foundation (integration unit 12.1)
 
-Axios is configured in `src/services/http.ts`. Document/chat features still use
-`api.ts` mocks until units 12.2/12.3. `ApiError` retains the backend's message,
+Axios is configured in `src/services/http.ts`. Document features now use this client; chat remains mocked until unit 12.3. `ApiError` retains the backend's message,
 code, and HTTP status. Network failures on mutations are flagged `ambiguous` so
 later integration can reconcile state before retrying. Requests are never retried
 automatically. The default timeout is five minutes; callers can override it.
