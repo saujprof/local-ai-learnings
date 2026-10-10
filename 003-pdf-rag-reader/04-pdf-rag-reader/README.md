@@ -335,3 +335,63 @@ Qdrant
 ↓
 multi-document RAG application
 ```
+
+## Running with Docker Compose (Backend Unit 3)
+
+Prerequisites: Docker Engine/Desktop with Compose v2, and Ollama running on the
+host with the configured models installed. In WSL, enable Docker Desktop's WSL
+integration for this distro and confirm `docker compose version` works.
+
+From this project directory:
+
+```sh
+cp .env.example .env
+docker compose config
+docker compose up --build -d
+docker compose ps
+curl http://127.0.0.1:8000/health
+docker compose exec backend python -m scripts.check_connections
+```
+
+The last command checks backend, Qdrant, and Ollama reachability from inside the
+backend container, plus the presence of both configured models. It exits nonzero
+on failure. Retry after Qdrant/Ollama have started; Compose's dependency ordering
+only waits for the Qdrant container to start, not for readiness. Backend health
+checks liveness only, so a healthy backend does not imply dependencies are ready.
+
+API docs: `http://127.0.0.1:8000/api-docs`. The UI still runs separately with
+mock data. No document/chat integration or vector collection creation occurs yet.
+
+Compose reads the root `.env`; it does not load `be/.env`. Backend URLs differ
+inside containers: Qdrant is `http://qdrant:6333`, and host Ollama defaults to
+`http://host.docker.internal:11434`. Override `OLLAMA_URL` for your host setup.
+If Ollama listens only on host loopback, configure it to listen on an interface
+reachable from Docker, with access limited to your local environment.
+
+The backend runs as a non-root user, with one worker and no development reload.
+Only the backend port is published, on host loopback. Qdrant stays on the Compose
+network. Named volumes preserve PDFs, registry/history, and Qdrant storage.
+
+### Reviewing persistence
+
+Before ingestion exists, use harmless marker files to check backend volume writes:
+
+```sh
+docker compose exec backend python -c "from pathlib import Path; Path('/app/uploads/unit3-check').write_text('ok'); Path('/app/data/unit3-check').write_text('ok')"
+docker compose down
+docker compose up -d
+docker compose exec backend python -c "from pathlib import Path; assert Path('/app/uploads/unit3-check').read_text() == 'ok'; assert Path('/app/data/unit3-check').read_text() == 'ok'; print('Storage survived recreation')"
+```
+
+Vector persistence can be exercised with actual records in unit 7. Qdrant's
+`/qdrant/storage` already uses a named volume. `docker compose down` retains
+volumes; adding `--volumes` deletes their data.
+
+Use `docker compose logs backend qdrant` for troubleshooting. Rebuild after
+backend code/dependency changes with `docker compose up --build -d`.
+
+Implementation verification: Docker is unavailable in the current WSL distro,
+so image build, live connectivity, and volume persistence checks remain pending.
+
+References: [Compose networking](https://docs.docker.com/compose/how-tos/networking/)
+and [Qdrant installation](https://qdrant.tech/documentation/install/).
