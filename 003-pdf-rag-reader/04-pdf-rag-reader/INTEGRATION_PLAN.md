@@ -1,7 +1,7 @@
 # Remaining integration work
 
 Backend units 1–11 and the mock UI are implemented. Split unit 12 into the
-following reviewable units. Unit 12.1 is implemented and its HTTP checks and UI build pass. Unit 12.2 implementation is complete; live document lifecycle review remains pending. Unit 12.3 implementation is complete; live chat/history review remains pending. Unit 12.4 live verification is complete. Units 12.5–12.6 are pending. Implement and review
+following reviewable units. Unit 12.1 is implemented and its HTTP checks and UI build pass. Unit 12.2 implementation is complete; live document lifecycle review remains pending. Unit 12.3 implementation is complete; live chat/history review remains pending. Unit 12.4 live verification is complete. Unit 12.5 acceptance checks passed, including browser checks and a mobile layout fix. Unit 12.6 is pending. Implement and review
 one unit at a time; update documentation alongside each change.
 
 ## 12.1 — HTTP client and development configuration
@@ -57,6 +57,8 @@ prove that the model and vector dependencies work. Retain pending status if the
 required services are unavailable; mock tests do not satisfy this unit.
 
 ## 12.5 — End-to-end behavior and recovery
+
+Status: complete. See [acceptance results](END_TO_END_VERIFICATION.md).
 
 - Run the real UI → API → Qdrant/Ollama flow with a small known PDF fixture.
 - Check factual answers, page citations, and no-evidence responses.
