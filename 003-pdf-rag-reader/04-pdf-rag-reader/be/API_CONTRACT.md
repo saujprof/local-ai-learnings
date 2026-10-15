@@ -1,7 +1,6 @@
 # V4 API contract
 
-This is the contract for the first backend implementation. Document lifecycle and chat/history routes are implemented. Live end-to-end
-verification and UI integration remain pending. GET /health is implemented as a liveness endpoint returning
+This is the contract for the first backend implementation. Document lifecycle and chat/history routes are implemented. UI integration and the planned live acceptance checks are complete. GET /health is implemented as a liveness endpoint returning
 200 with `{"status":"ok"}`. Paths have no API prefix; deployment proxies may add one.
 JSON field names are case-sensitive. IDs are opaque strings. Timestamps, when
 present, are UTC ISO 8601 strings. No authentication is required in V4.
@@ -101,11 +100,21 @@ messages:
 }
 ```
 
-`answer` is Markdown text, not HTML. `sources` is always an array. No ready
-documents returns **409**. Ready documents but insufficient evidence returns
+`answer` is Markdown text, not HTML. `sources` is always an array. Casual
+GENERAL messages can succeed without documents and return `sources: []`.
+Document-routed RAG messages with no ready documents return **409**. Ready
+documents but insufficient evidence returns
 **200** with an explanatory answer and `sources: []`; it must not fabricate an
 answer. Dependency unavailability returns **503**, dependency timeout **504**,
 and unexpected failures **500**. Failed turns are not partially persisted.
+
+The backend sends at most one previous conversation turn to a small routing
+model before the document readiness check, and only for a referential follow-up.
+Standalone messages are classified without history. The routing call only classifies.
+GENERAL messages are answered by a separate call that receives the current
+message without document history. RAG messages use the existing grounded
+pipeline. Invalid or unavailable router output falls back to RAG; routing
+details are internal and do not change the response schema.
 
 The response shape matches the current UI. Persisted messages receive stable
 backend IDs, exposed through GET /chat. Clients may use temporary IDs for the
@@ -152,7 +161,7 @@ envelope. Do not return internal traces or filesystem paths.
 ```
 
 `code` is a stable machine-readable string; `message` is user-readable.
-The future HTTP adapter extracts `error.message` and throws an Error for the
+The HTTP adapter extracts `error.message` and throws an Error for the
 existing composables. Do not rely on FastAPI's default validation envelope.
 
 | Status | Example codes |
@@ -175,5 +184,5 @@ existing composables. Do not rely on FastAPI's default validation envelope.
 - The UI's `ChatMessage` can ignore the additional `created_at` field.
 - Unit 2 should configure the documentation path; subsequent units implement
   validation and error handlers to this contract.
-- Unit 12 replaces the mock service with Axios. Keep both unit 12 and live
-  integration verification pending until the backend is implemented.
+- The UI uses Axios for real document/chat requests. Live acceptance results are
+  recorded in the project verification reports.

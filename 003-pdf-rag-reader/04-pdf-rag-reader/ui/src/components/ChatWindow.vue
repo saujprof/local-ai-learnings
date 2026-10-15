@@ -47,7 +47,7 @@ watch(() => [props.messages.length, props.sending, props.loadingHistory], async 
   const nearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 80
   adjusting = true
   await nextTick()
-  if (anchor && top !== undefined && !nearBottom) {
+  if (anchor && anchor.isConnected && top !== undefined && !nearBottom) {
     element.scrollTop += anchor.getBoundingClientRect().top - top
   } else {
     element.scrollTop = element.scrollHeight

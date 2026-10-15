@@ -21,7 +21,11 @@ def main() -> int:
             print(f'{name}: reachable')
             if name == 'Ollama':
                 available = {model['name'] for model in payload.get('models', [])}
-                for model in (settings.ollama_chat_model, settings.ollama_embedding_model):
+                for model in (
+                    settings.ollama_router_model,
+                    settings.ollama_chat_model,
+                    settings.ollama_embedding_model,
+                ):
                     if model not in available:
                         print(f'  Missing configured model: {model}')
                         failed = True

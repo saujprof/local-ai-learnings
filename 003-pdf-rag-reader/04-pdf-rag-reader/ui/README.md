@@ -1,5 +1,7 @@
 # V4 UI - PDF RAG Chat
 
+Implementation record: [Unit 12 integration plan](../INTEGRATION_PLAN.md).
+
 The V4 frontend is a simple Vue 3 interface for uploading PDFs, managing indexed documents, asking questions, and viewing answers with citations.
 
 The UI should stay intentionally simple so the main learning remains focused on the RAG system.
@@ -16,84 +18,74 @@ needed. Keep service calls in `src/services/api.ts`.
 
 ## Implementation Units
 
-Implement and review one unit at a time:
+All five units are implemented; the list records their original sequence:
 
 1. **Screen layout:** Documents and Chat panels, empty states, responsive layout.
-2. **Document interactions:** typed document models, mock service, PDF upload,
+2. **Document interactions:** typed document models, API service, PDF upload,
    processing states, and deletion after service confirmation.
-3. **Chat interactions:** question input, mock responses, waiting state, answers,
+3. **Chat interactions:** question input, backend responses, waiting state, answers,
    and separate source citations.
 4. **Chat history:** initial history, loading older messages, and preserving the
    reader's scroll position when prepending messages.
 5. **Backend integration:** agree on response shapes, connect HTTP endpoints,
    poll document status, and handle API failures with useful recovery actions.
 
-Current progress: units 1–4 are implemented. Documents and chat use an in-memory
-mock service. Chat history persists in browser local storage. No PDF content is uploaded or indexed
-yet, and reloading the page clears the mock documents.
+Current implementation: document operations, chat, and history use the real
+backend. Runtime and browser acceptance checks also passed.
 
-### Reviewing Unit 2
+### Reviewing real document operations (12.2)
 
-- Select a nonempty `.pdf` file. It appears as Processing, then Ready after
-  approximately three seconds plus the next status refresh.
-- Select a file named `example.fail.pdf` to simulate failed processing.
-- Delete a document in any state. It remains visible as Deleting until the mock
-  service confirms deletion.
-- Try an empty PDF or a non-PDF file (if the file picker allows it) to see a
-  validation error. The filename check is only preliminary UI validation;
-  actual PDF validation belongs to the backend.
-- Upload the same file again to confirm each upload gets its own document ID.
-- Reload the page to return to the empty state.
+Start the backend and UI using the HTTP foundation instructions below.
 
-The mock API lives in `src/services/api.ts`; document state and refresh cleanup
-live in `src/composables/useDocuments.ts`. No router or store library is needed.
+- Upload a nonempty PDF. The UI sends multipart field `file` to POST /docs.
+- Observe Processing followed by Ready or Failed from the backend. Processing
+  requires the backend's Ollama and Qdrant dependencies.
+- Reload or use Refresh documents to load persisted documents.
+- Delete a document. Its row remains Deleting until the API confirms deletion.
+- Stop the backend to check list/refresh errors, then restart it and use Refresh
+  documents to retry. Polling pauses on a refresh failure.
+- After an upload timeout, refresh before uploading again: the first upload may
+  already have been saved. A failed deletion keeps its row; refresh to reconcile
+  the backend state before retrying.
 
-### Reviewing Unit 3
+Status polling runs every three seconds while any document is Processing or
+Deleting and stops on unmount. Concurrent refreshes are suppressed; responses
+started before a completed mutation cannot overwrite it. Upload filename/empty
+checks are preliminary; PDF validation is backend-owned. `.fail.pdf` no longer
+has special behavior. Live lifecycle checks passed; see the root verification reports.
 
-- Upload a PDF and wait for Ready. Question input is disabled until a document
-  is ready, and blank questions cannot be sent.
-- Send a question. Your message appears immediately, followed by a waiting
-  indicator and then a clearly labeled demo answer with separate sources.
-- Upload two PDFs to see both single-page and page-range citation formatting.
-  Page numbers are simulated; the mock service does not read PDF content.
-- Submit `/fail` to simulate a chat error. The draft remains available to edit
-  and resend; the failed turn is removed from the conversation.
-- While waiting, input and Send are disabled to prevent duplicate requests.
-- New messages scroll into view when you are near the bottom; reading older
-  messages keeps your position. Chat history survives reloads.
+### Reviewing real chat and history (12.3)
 
-Chat state lives in `src/composables/useChat.ts`, with typed responses and sources
-in `src/types/chat.ts`. `ChatWindow`, `ChatMessage`, `SourceList`, and
-`QuestionInput` handle presentation. Assistant answers render Markdown through `markdown-it` and are sanitized with
-DOMPurify. User questions remain plain text; citations stay separate. Headings,
-lists, tables, links, blockquotes, and fenced code blocks are supported. Raw HTML
-and image rendering are disabled. Code blocks do not yet have syntax highlighting.
+Chat now uses POST /chat and paginated GET /chat. No simulated answers,
+filename triggers, `/fail` commands, or browser-stored history remain in the
+service. Old `pdf-rag-demo-chat-v1` browser data is ignored.
 
-### Reviewing Unit 4
+- Upload a PDF and wait until Ready, then send a question.
+- Greetings and other casual messages can be sent without a Ready PDF; the
+  backend router answers them with no citations.
+- Verify Markdown answers and backend-owned PDF/page citations.
+- Reload to retrieve persisted messages. Scroll upward to load older pages.
+- Use Refresh history to replace the conversation with the latest ten stored
+  messages and reset pagination. This does not clear the draft.
+- Backend errors are displayed using their message. Failed sends retain the
+  draft and remove the temporary question from the conversation.
+- A network failure or server error blocks sending until history refresh succeeds.
+  Inspect the refreshed conversation before retrying. A refresh is a snapshot:
+  the original request may still be processing, so it cannot guarantee that a
+  retry will never duplicate a turn. Requests are never automatically resent.
+- Initial/older-history failures support retry. The backend limits questions to
+  10,000 characters; the input enforces the same limit.
 
-- Send at least six questions to create more than ten messages, then reload.
-  The latest ten messages load in chronological order, scrolled to the bottom.
-- Scroll to the top or select **Load older messages**. Older messages are
-  prepended while preserving the visible message position.
-- Continue until **Beginning of conversation** appears. Sending another question
-  updates the history offset so older pages do not repeat the new turn.
-- History loading and errors have separate states; use **Retry history** after
-  a storage failure. Sending pauses during history requests.
-- Mock history uses local storage key `pdf-rag-demo-chat-v1`. Clear that key in
-  browser developer tools to reset the conversation. PDFs still clear on reload,
-  so upload again before sending new questions. Old citations remain historical.
-
-The mock history endpoint uses message-based `limit` and `offset` (not turns),
-with offsets counted from newest, each returned page ordered oldest to newest,
-plus `hasMore`. This contract must be agreed with the backend in unit 5.
-Concurrent tabs are outside this mock's scope.
+Successful sends use temporary UI message IDs until history is refreshed; offset
+advances by the two persisted messages. Backend IDs are used for loaded history.
+Browser scroll behavior and the live fixture answer/citation checks passed in unit 12.5.
 
 ## Local Development
 
 From this `ui` directory:
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
@@ -244,6 +236,10 @@ response arrives
 show answer + citations
 ```
 
+The backend may instead classify a casual message as GENERAL and return a short
+answer with no citations. The UI uses the same request and response shape for
+both paths, so sending is available before a document reaches Ready.
+
 Example response:
 
 ```json
@@ -345,3 +341,22 @@ V4 UI is intentionally not focused on:
 - admin dashboards
 
 The purpose of this UI is to make the RAG backend usable as a complete application.
+
+## HTTP foundation (integration unit 12.1)
+
+Axios is configured in `src/services/http.ts`. Document features now use this client; chat and history also use this client. `ApiError` retains the backend's message,
+code, and HTTP status. Network failures on mutations are flagged `ambiguous` so
+later integration can reconcile state before retrying. Requests are never retried
+automatically. The default timeout is five minutes; callers can override it.
+A timeout does not cancel processing already started on the backend.
+
+Copy `.env.example` to `.env.local` if needed, then restart Vite. `/api` requests
+are proxied to `API_PROXY_TARGET` (default `http://127.0.0.1:8000`), stripping the
+prefix. This keeps development browser requests on the UI origin.
+
+For production, configure a reverse proxy for `/api`, or build with an absolute
+`VITE_API_BASE_URL` and configure matching backend CORS. The Vite development
+proxy is not a production deployment proxy. Never put secrets in VITE_ variables.
+
+Run `npm run test:http` with Node 22.18+ (native TypeScript stripping), and
+`npm run build` for TypeScript/build validation.

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', extra='ignore')
 
     ollama_url: HttpUrl = HttpUrl('http://127.0.0.1:11434')
+    ollama_router_model: str = Field(default='qwen2.5:0.5b', min_length=1, pattern=r'\S')
     ollama_chat_model: str = Field(default='qwen3:8b', min_length=1, pattern=r'\S')
     ollama_embedding_model: str = Field(default='qwen3-embedding:8b', min_length=1, pattern=r'\S')
     qdrant_url: HttpUrl = HttpUrl('http://127.0.0.1:6333')
@@ -25,6 +26,9 @@ class Settings(BaseSettings):
 
     chat_context_messages: int = Field(default=10, ge=1, le=100)
     chat_context_characters: int = Field(default=6000, ge=1)
+    router_context_messages: int = Field(default=2, ge=1, le=2)
+    router_context_characters: int = Field(default=1500, ge=1)
+    router_timeout_seconds: float = Field(default=20, gt=0)
 
     @model_validator(mode='after')
     def validate_retrieval_limits(self):

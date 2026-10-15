@@ -39,3 +39,14 @@ def answer_client(settings: Settings):
 
     with httpx.Client(base_url=str(settings.ollama_url), timeout=settings.dependency_timeout_seconds) as client:
         yield AnswerService(client, settings.ollama_chat_model)
+
+
+@contextmanager
+def routing_client(settings: Settings):
+    from app.services.routing_service import RoutingService
+
+    with httpx.Client(
+        base_url=str(settings.ollama_url),
+        timeout=settings.router_timeout_seconds,
+    ) as client:
+        yield RoutingService(client, settings.ollama_router_model)
