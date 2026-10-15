@@ -1,6 +1,6 @@
 # V4 Backend - PDF RAG API
 
-Remaining work: [Unit 12 integration plan](../INTEGRATION_PLAN.md).
+Implementation record: [Unit 12 integration plan](../INTEGRATION_PLAN.md).
 
 The V4 backend is a FastAPI service that handles PDF upload, document processing, vector storage, retrieval, chat, and citations.
 
@@ -15,12 +15,13 @@ Runtime          -> Docker Compose for backend + Qdrant
 
 ## Implementation Units
 
-Implement and review one unit at a time. Units 1 and 2 are implemented; unit 3 is implemented with live Docker verification pending; units 4–7 are implemented (unit 7 live integration pending); unit 8 is implemented with live integration pending; unit 9 is implemented with live relevance verification pending; unit 10 is implemented with live answer-quality verification pending; unit 11 is implemented with live end-to-end verification pending; unit 12 is pending.
+Backend units 1–11 and UI integration unit 12 are implemented. Runtime,
+persistence, and browser acceptance checks passed; see
+[Runtime verification](../RUNTIME_VERIFICATION.md) and
+[End-to-end verification](../END_TO_END_VERIFICATION.md).
 
-The request/response shapes, status codes, pagination, and error format are
-defined in [API_CONTRACT.md](API_CONTRACT.md). Health and local document routes are implemented; chat routes remain pending.
-UI units 1–4 already use mocks; real UI integration remains deferred until the
-backend APIs are ready.
+The following table records the original incremental scope. Current endpoint
+behavior is defined in [API_CONTRACT.md](API_CONTRACT.md).
 
 | Unit | Scope | Review check |
 | --- | --- | --- |
@@ -28,7 +29,7 @@ backend APIs are ready.
 | 2. FastAPI foundation | Create the app, environment configuration, dependency setup, and a health endpoint. | App starts locally; health endpoint responds; invalid configuration produces a useful error. |
 | 3. Container setup | Add backend Dockerfile and root Compose configuration for backend + Qdrant, persistent volumes, and host Ollama connectivity. | Health endpoint is reachable; backend can reach Qdrant and host Ollama; stored data survives container recreation. |
 | 4. Local persistence | Implement document registry and chat-history repositories with coordinated, atomic JSON writes. | Round-trip, restart, and concurrent-update checks preserve records without lost writes. |
-| 5. Document APIs | Implement PDF validation, upload storage, document listing, and deletion of local files/registry entries. | Upload returns a Processing document; list survives restart; invalid uploads are rejected; failed deletion retains the registry entry. Ingestion is not wired yet. |
+| 5. Document APIs | Implement PDF validation, upload storage, document listing, and deletion of local files/registry entries. | Upload returns a Processing document; list survives restart; invalid uploads are rejected; failed deletion retains the registry entry. Ingestion was connected in unit 8. |
 | 6. PDF extraction and chunking | Extract page-aware text and produce chunks carrying document/page metadata. | A small multi-page fixture produces traceable chunks; empty or unreadable PDFs report useful failures. |
 | 7. Embeddings and vector storage | Add Ollama embedding client and Qdrant collection, upsert, search, and delete operations. | Fixture chunks can be embedded, stored, retrieved, and deleted by document ID; vector dimensions are checked. |
 | 8. Ingestion lifecycle | Connect background ingestion to upload, update Ready/Failed states, clean up vectors on deletion, coordinate deletion with ingestion, and handle interrupted jobs on restart. | A PDF reaches Ready or Failed; deleting during ingestion leaves no orphan vectors; restart does not leave documents stuck indefinitely. |
@@ -52,7 +53,8 @@ backend APIs are ready.
 ### Boundaries
 
 - Units 5–7 provide pieces independently; unit 8 connects actual ingestion.
-  Until then, an uploaded document staying Processing is expected.
+  This describes the implementation sequence; current uploads continue through
+  the unit 8 ingestion lifecycle to Ready or Failed.
 - Persist both `uploads/` and `data/`, plus Qdrant storage.
 - Start with one backend process and coordinate JSON writes and document jobs
   within that process. Multiple workers require a different coordination plan.
@@ -79,13 +81,13 @@ uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
 - `/docs` supports upload, list, and local deletion; `/chat` supports synchronous questions and paginated history.
 
 Health is a liveness check, not proof that Qdrant or Ollama is reachable.
-No external service is required to start this unit. Docker comes in unit 3.
+No external service is required for the health endpoint. Ingestion/chat require Qdrant and Ollama.
 
 Settings load from `.env` in the working directory; environment variables take
 precedence. See `.env.example` for local defaults. URL schemes, model names, and
 positive upload limits are validated at startup. Relative storage paths resolve
 from the working directory. Storage directories are not created until the
-persistence units. For containers, configure service/host-gateway URLs in unit 3.
+first persistence write. For containers, Compose configures service/host-gateway URLs.
 
 Run focused checks:
 
@@ -108,8 +110,8 @@ created on the first write, and existing records are loaded on each operation.
 
 Document operations support add, get, newest-first list, status update, and
 registry removal. Removing a registry record does not delete PDFs or vectors;
-that coordination belongs to the later lifecycle service. These are internal
-records containing storage paths; future routes must project public fields.
+that coordination belongs to IngestionService. These are internal
+records containing storage paths; document routes return only public fields.
 
 Chat writes append a whole completed question/answer pair atomically, assigning
 stable IDs and UTC timestamps. Pages follow the API contract's message offsets
@@ -133,7 +135,7 @@ python -m pytest tests/test_storage.py -q
 ```
 
 Tests cover repository recreation, lifecycle updates, concurrent instances,
-history pagination, failed replacement, and corrupt-file preservation. Document endpoints are implemented in unit 5; chat HTTP endpoints remain pending.
+history pagination, failed replacement, and corrupt-file preservation. Document and chat HTTP endpoints are implemented.
 
 ## Document APIs (Unit 5)
 
@@ -159,7 +161,7 @@ Deletion returns 204 after removing the PDF and registry entry. Missing files
 are tolerated on retry. A failed deletion keeps a Failed record with an error.
 Registry operations coordinate local concurrent requests within one process.
 
-Ingestion and vector deletion are not wired until unit 8. At this earlier milestone documents stayed Processing; unit 8 now connects ingestion. UI integration is still deferred.
+Ingestion and vector deletion are connected through unit 8; the UI uses the real APIs.
 
 Tests cover upload validation/cleanup, unique IDs, hidden internal paths, restart
 persistence, deletion, and failure/retry. Run `python -m pytest -q`.
@@ -181,7 +183,7 @@ windows can split words, and paragraph/table layout is not preserved.
 
 Unreadable, encrypted, or entirely text-free PDFs raise `PDFProcessingError`
 with useful messages. OCR is not included. The service only extracts/chunks;
-background jobs, embeddings, and status updates remain for later units.
+background jobs, embeddings, and status updates are handled by IngestionService.
 
 ```python
 from pathlib import Path
@@ -211,7 +213,7 @@ vector dimensions match. Never mix embeddings from different models.
 Configure `QDRANT_COLLECTION`, `DEPENDENCY_TIMEOUT_SECONDS`, and
 `EMBEDDING_BATCH_SIZE` in the appropriate local/Compose environment file.
 Synchronous clients are scoped and closed with `vector_clients(settings)`;
-call from a worker thread in future asynchronous ingestion.
+the ingestion service runs them in its background worker thread.
 
 ```python
 from pathlib import Path
@@ -228,9 +230,7 @@ with vector_clients(Settings()) as (embeddings, vectors):
 ```
 
 Run `python -m pytest tests/test_vectors.py -q` for HTTP transport tests. Live
-Ollama/Qdrant checks remain pending because neither service was reachable at the
-default local ports during implementation. No ingestion or HTTP route wiring is
-included; partial-batch cleanup and lifecycle coordination belong to unit 8.
+Ollama/Qdrant live checks passed during unit 12.4. Ingestion and routes now use these services; partial-batch cleanup and lifecycle coordination are implemented in unit 8.
 
 API references: [Ollama embeddings](https://github.com/ollama/ollama/blob/main/docs/capabilities/embeddings.mdx),
 [Qdrant API](https://api.qdrant.tech/api-reference).
@@ -253,14 +253,13 @@ delete may also wait behind another document's active batch/job.
 
 Startup changes interrupted Processing/Deleting records to Failed, without
 requiring external services to be online. Existing partial vectors are retained
-until successful deletion; delete/reupload is the recovery action. The later
-retrieval service must restrict evidence to Ready document IDs. Run one worker.
+until successful deletion; delete/reupload is the recovery action. The retrieval
+service restricts evidence to Ready document IDs. Run one worker.
 Missing Qdrant collections are treated as already clean during deletion.
 
 Review: upload a text PDF, poll GET /docs until Ready, then delete it. Try a blank
 PDF for Failed; interrupt processing and restart for recovery. Confirm document
-vectors are absent after successful deletion. Live Ollama/Qdrant verification
-remains pending; automated tests use controlled clients, including concurrent
+vectors are absent after successful deletion. Live Ollama/Qdrant verification passed; automated tests use controlled clients, including concurrent
 deletion, partial-write failure, cleanup retry, and restart recovery.
 
 ## Retrieval and Reranking (Unit 9)
@@ -268,7 +267,7 @@ deletion, partial-write failure, cleanup retry, and restart recovery.
 `retrieval_client(settings, repository)` from `app.services.vector_clients`
 provides a configured `RetrievalService`. Call `retrieve(question)` to receive
 ranked Qdrant hits containing scores and original citation payloads. This is a
-service only; answer generation and POST /chat arrive in units 10 and 11.
+retrieval service; AnswerService and ChatService provide generation and orchestration.
 
 The service embeds the question and requests Top-K hits with a Qdrant filter for
 Ready document IDs. It drops unusable/nonpositive scores and empty text, retains
@@ -295,15 +294,14 @@ with retrieval_client(settings, DocumentRepository(settings.data_dir)) as retrie
 
 Run `python -m pytest tests/test_retrieval.py tests/test_vectors.py -q` for
 controlled filtering, ready-document restriction, reranking, malformed output,
-and deletion-during-reranking checks. Live Ollama/Qdrant relevance verification
-remains pending.
+and deletion-during-reranking checks. Live known-fixture retrieval and no-evidence checks passed in unit 12.5.
 
 ## Grounded Answer Generation (Unit 10)
 
 `AnswerService` in `app/services/llm_service.py` generates Markdown answers from
 retrieved passages. Use `answer_client(settings)` from `vector_clients` to open
 and close the Ollama client. Call `answer(question, evidence)` with retrieval
-hits; the result matches the planned POST /chat response.
+hits; the result matches the POST /chat response.
 
 The prompt treats PDF text as untrusted evidence and requests structured output
 containing an answer and passage indices. The backend validates those indices
@@ -326,7 +324,7 @@ with answer_client(settings) as answers:
 
 Run `python -m pytest tests/test_answers.py tests/test_retrieval.py -q` for
 controlled answer/citation, no-evidence, abstention, and invalid-output checks.
-Live Ollama answer-quality verification remains pending.
+The known-fixture live answer and no-evidence checks passed; broader quality evaluation is outside this scope.
 
 ## Chat APIs and History (Unit 11)
 
@@ -353,8 +351,7 @@ curl 'http://127.0.0.1:8000/chat?limit=10&offset=0'
 
 Run `python -m pytest -q`. Tests cover request validation, history pagination and
 restart, bounded context, concurrent-request rejection, no-ready-document errors,
-and failed-turn persistence. Live Ollama/Qdrant end-to-end verification remains
-pending. The UI continues to use mocks until unit 12.
+and failed-turn persistence. Live Ollama/Qdrant and browser end-to-end verification passed. The UI uses real APIs.
 
 ## Responsibilities
 

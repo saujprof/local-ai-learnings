@@ -1,8 +1,23 @@
-# Remaining integration work
+# Integration completion record
 
-Backend units 1–11 and the mock UI are implemented. Split unit 12 into the
-following reviewable units. Unit 12.1 is implemented and its HTTP checks and UI build pass. Unit 12.2 implementation is complete; live document lifecycle review remains pending. Unit 12.3 implementation is complete; live chat/history review remains pending. Unit 12.4 live verification is complete. Unit 12.5 acceptance checks passed, including browser checks and a mobile layout fix. Unit 12.6 is pending. Implement and review
-one unit at a time; update documentation alongside each change.
+All planned units 12.1–12.6 are complete. Backend units 1–11 and real UI
+integration are implemented. The sections below preserve the reviewable scopes.
+
+| Unit | Result |
+| --- | --- |
+| 12.1 HTTP foundation | Axios client, proxy configuration, error handling; HTTP checks and UI build passed |
+| 12.2 Documents | Real upload/list/delete, status polling and recovery; live browser flow passed |
+| 12.3 Chat/history | Real questions, citations, pagination and reconciliation; browser checks passed |
+| 12.4 Runtime | Container connectivity, model dimensions, storage persistence and cleanup passed |
+| 12.5 Acceptance | Known-answer/no-evidence checks, recovery and browser checks passed; mobile button fixed |
+| 12.6 Completion | Setup, configuration, troubleshooting and limitations documented; final checks passed |
+
+Final validation: **59 backend tests passed**, HTTP client checks passed, and
+frontend TypeScript/production build passed. One existing Starlette test-client
+deprecation warning remains. Live results are recorded in
+[RUNTIME_VERIFICATION.md](RUNTIME_VERIFICATION.md) and
+[END_TO_END_VERIFICATION.md](END_TO_END_VERIFICATION.md). Fixture coverage is not
+a general model-quality guarantee. Known scope limits are in the root README.
 
 ## 12.1 — HTTP client and development configuration
 
@@ -14,7 +29,7 @@ one unit at a time; update documentation alongside each change.
 
 Review: UI builds; HTTP-client checks cover successful responses, empty 204
 responses, backend errors, and network failures. Document local and production
-API URL setup. Existing mocks remain usable until each feature is switched.
+API URL setup. Mocks were removed when each feature was switched.
 
 ## 12.2 — Real document operations
 
@@ -73,19 +88,22 @@ checks and live model-quality review must be reported separately.
 
 ## 12.6 — Documentation and completion review
 
+Status: complete. Setup, troubleshooting, verification evidence, and scope
+limits are documented; final automated checks passed.
+
 - Remove stale statements that implemented chat/ingestion features are pending.
 - Replace mock UI instructions with real setup and review steps.
 - Document environment files, ports, model setup, storage, and troubleshooting.
 - Confirm backend tests and frontend build pass after the final code changes.
 - Summarize completed live checks and explicit outstanding limitations.
 
-Review: a reader can follow the documented setup from a clean checkout. Mark
-unit 12 complete only after implementation and required live checks are done.
+Review result: the root README provides the clean-checkout path, and units
+12.4–12.5 record the required live checks.
 
 ## Order and boundaries
 
-Implement 12.1 → 12.2 → 12.3. Runtime verification (12.4) may start earlier when
-Docker and Ollama are available; it must pass before live acceptance in 12.5.
-Finish with 12.6. Keep Vue component blocks in template → script → style order.
+The units were completed in the order 12.1 → 12.2 → 12.3, followed by runtime
+and acceptance verification, then documentation review. Vue component blocks
+use template → script → style order.
 No router/store library, authentication, streaming, or additional backend feature
 units are introduced by this plan.

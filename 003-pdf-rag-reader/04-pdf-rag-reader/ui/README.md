@@ -1,6 +1,6 @@
 # V4 UI - PDF RAG Chat
 
-Remaining work: [Unit 12 integration plan](../INTEGRATION_PLAN.md).
+Implementation record: [Unit 12 integration plan](../INTEGRATION_PLAN.md).
 
 The V4 frontend is a simple Vue 3 interface for uploading PDFs, managing indexed documents, asking questions, and viewing answers with citations.
 
@@ -18,20 +18,20 @@ needed. Keep service calls in `src/services/api.ts`.
 
 ## Implementation Units
 
-Implement and review one unit at a time:
+All five units are implemented; the list records their original sequence:
 
 1. **Screen layout:** Documents and Chat panels, empty states, responsive layout.
-2. **Document interactions:** typed document models, mock service, PDF upload,
+2. **Document interactions:** typed document models, API service, PDF upload,
    processing states, and deletion after service confirmation.
-3. **Chat interactions:** question input, mock responses, waiting state, answers,
+3. **Chat interactions:** question input, backend responses, waiting state, answers,
    and separate source citations.
 4. **Chat history:** initial history, loading older messages, and preserving the
    reader's scroll position when prepending messages.
 5. **Backend integration:** agree on response shapes, connect HTTP endpoints,
    poll document status, and handle API failures with useful recovery actions.
 
-Current progress: document operations now use the real backend (integration
-unit 12.2). Chat and history now use the real backend (integration unit 12.3).
+Current implementation: document operations, chat, and history use the real
+backend. Runtime and browser acceptance checks also passed.
 
 ### Reviewing real document operations (12.2)
 
@@ -52,7 +52,7 @@ Status polling runs every three seconds while any document is Processing or
 Deleting and stops on unmount. Concurrent refreshes are suppressed; responses
 started before a completed mutation cannot overwrite it. Upload filename/empty
 checks are preliminary; PDF validation is backend-owned. `.fail.pdf` no longer
-has special behavior. Live lifecycle verification remains pending.
+has special behavior. Live lifecycle checks passed; see the root verification reports.
 
 ### Reviewing real chat and history (12.3)
 
@@ -76,14 +76,14 @@ service. Old `pdf-rag-demo-chat-v1` browser data is ignored.
 
 Successful sends use temporary UI message IDs until history is refreshed; offset
 advances by the two persisted messages. Backend IDs are used for loaded history.
-Browser scroll behavior and live answer/citation review remain for units 12.4–12.5.
+Browser scroll behavior and the live fixture answer/citation checks passed in unit 12.5.
 
 ## Local Development
 
 From this `ui` directory:
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 

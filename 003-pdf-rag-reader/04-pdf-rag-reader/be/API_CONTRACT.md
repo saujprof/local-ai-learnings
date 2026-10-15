@@ -1,7 +1,6 @@
 # V4 API contract
 
-This is the contract for the first backend implementation. Document lifecycle and chat/history routes are implemented. Live end-to-end
-verification and UI integration remain pending. GET /health is implemented as a liveness endpoint returning
+This is the contract for the first backend implementation. Document lifecycle and chat/history routes are implemented. UI integration and the planned live acceptance checks are complete. GET /health is implemented as a liveness endpoint returning
 200 with `{"status":"ok"}`. Paths have no API prefix; deployment proxies may add one.
 JSON field names are case-sensitive. IDs are opaque strings. Timestamps, when
 present, are UTC ISO 8601 strings. No authentication is required in V4.
@@ -152,7 +151,7 @@ envelope. Do not return internal traces or filesystem paths.
 ```
 
 `code` is a stable machine-readable string; `message` is user-readable.
-The future HTTP adapter extracts `error.message` and throws an Error for the
+The HTTP adapter extracts `error.message` and throws an Error for the
 existing composables. Do not rely on FastAPI's default validation envelope.
 
 | Status | Example codes |
@@ -175,5 +174,5 @@ existing composables. Do not rely on FastAPI's default validation envelope.
 - The UI's `ChatMessage` can ignore the additional `created_at` field.
 - Unit 2 should configure the documentation path; subsequent units implement
   validation and error handlers to this contract.
-- Unit 12 replaces the mock service with Axios. Keep both unit 12 and live
-  integration verification pending until the backend is implemented.
+- The UI uses Axios for real document/chat requests. Live acceptance results are
+  recorded in the project verification reports.
