@@ -329,10 +329,12 @@ The known-fixture live answer and no-evidence checks passed; broader quality eva
 ## Chat APIs and History (Unit 11)
 
 POST /chat now validates a nonblank string question (maximum 10,000 characters),
-requires a Ready document, retrieves evidence, generates an answer, and saves
-both messages atomically before returning. A per-app nonblocking lock rejects
-concurrent chat requests with 409. Dependency failures do not persist a partial
-turn. As with earlier units, run only one backend worker.
+routes it through `qwen2.5:0.5b`, and saves both messages atomically before
+returning. GENERAL messages receive a short answer from a separate history-free
+small-model call and do not require a Ready document. RAG messages require a Ready document and continue
+through retrieval, reranking, and grounded answer generation. A per-app
+nonblocking lock rejects concurrent chat requests with 409. Dependency failures
+do not persist a partial turn. As with earlier units, run only one backend worker.
 
 GET /chat supports `limit` (1–100) and `offset` (nonnegative), returning stable
 message IDs, chronological pages counted from newest, and `hasMore`. History
@@ -343,6 +345,19 @@ and total `CHAT_CONTEXT_CHARACTERS` (default 6000). Previous user questions help
 contextualize retrieval; bounded recent user/assistant text goes to generation
 as conversation context, never as PDF evidence. This simple approach is not a
 standalone-query rewrite or conversation summarizer.
+
+The router receives its own smaller context, bounded by
+`ROUTER_CONTEXT_MESSAGES` (default and maximum 2) and
+`ROUTER_CONTEXT_CHARACTERS` (default 1500). It classifies only clearly casual
+conversation as GENERAL. Substantive factual, explanatory, comparative,
+summary, person, date, and number questions use RAG, as do document follow-ups
+and ambiguous requests. Invalid JSON, an unknown route, or a router dependency
+failure safely falls back to RAG. GENERAL answering is a second model call that
+receives only the current message, preventing old document discussion from
+contaminating its answer. A standalone message is also classified without
+history; the previous turn is included only when the current message contains a
+follow-up reference such as “that,” “it,” or “tell me more.” Routing uses
+`ROUTER_TIMEOUT_SECONDS` independently from the heavier model calls.
 
 ```sh
 curl -H 'Content-Type: application/json' -d '{"question":"What is the refund policy?"}' http://127.0.0.1:8000/chat
@@ -638,8 +653,12 @@ Example configuration:
 
 ```env
 OLLAMA_URL=http://host.docker.internal:11434
+OLLAMA_ROUTER_MODEL=qwen2.5:0.5b
 OLLAMA_CHAT_MODEL=qwen3:8b
 OLLAMA_EMBEDDING_MODEL=qwen3-embedding:8b
+ROUTER_CONTEXT_MESSAGES=2
+ROUTER_CONTEXT_CHARACTERS=1500
+ROUTER_TIMEOUT_SECONDS=20
 ```
 
 Users can install Ollama separately, pull their preferred models, and configure the backend to use them.
@@ -647,6 +666,7 @@ Users can install Ollama separately, pull their preferred models, and configure 
 ```text
 ollama pull qwen3:8b
 ollama pull qwen3-embedding:8b
+ollama pull qwen2.5:0.5b
 ```
 
 Keeping Ollama on the host avoids Docker GPU passthrough setup and lets Ollama use the host GPU directly.
@@ -662,6 +682,12 @@ POST /chat
 |
 v
 receive question
+|
+v
+route with at most one previous conversation turn
+|
+v
+GENERAL: answer current message without history and save, or RAG: continue below
 |
 v
 generate question embedding

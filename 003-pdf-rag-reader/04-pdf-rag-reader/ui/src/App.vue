@@ -49,7 +49,7 @@ import { useDocuments } from './composables/useDocuments'
 
 const { documents, loading, uploading, deletingIds, error, refreshError, refreshing, refresh, upload, remove } = useDocuments()
 const { messages, question, sending, error: chatError, send, historyError, loadingHistory, historyReady, hasMore, loadHistory, refreshHistory, needsReconciliation } = useChat()
-const canSend = computed(() => !needsReconciliation.value && historyReady.value && !loadingHistory.value && documents.value.some((document) => document.status === 'ready' && !deletingIds.value.has(document.id)))
+const canSend = computed(() => !needsReconciliation.value && historyReady.value && !loadingHistory.value)
 function sendIfReady() {
   if (canSend.value) void send()
 }

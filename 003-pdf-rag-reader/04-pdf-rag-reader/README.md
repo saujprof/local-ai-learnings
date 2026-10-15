@@ -6,6 +6,10 @@ V4 turns the earlier RAG experiments into a small end-to-end application that so
 
 The goal is to move from a learning script to a **production-shaped RAG system** with clear application boundaries.
 
+**Project status: complete.** All planned V4 units, live integration checks, and
+the small-model chat/RAG router are implemented. Document-scope optimization
+and GPU latency tuning are optional follow-up experiments.
+
 ## Quick start
 
 Run from `003-pdf-rag-reader/04-pdf-rag-reader`. Requirements: Docker with
@@ -18,6 +22,7 @@ is needed only for running the backend/tests directly; the container uses 3.12.
    ```sh
    ollama pull qwen3:8b
    ollama pull qwen3-embedding:8b
+   ollama pull qwen2.5:0.5b
    ```
 
 3. Copy `.env.example` to `.env` if no `.env` exists. Adjust `OLLAMA_URL` for
@@ -93,6 +98,11 @@ context is bounded; conversation summarization is not implemented. A successful
 fixture test does not establish answer quality for arbitrary PDFs. Dependency
 ranges and container tags are not fully locked for reproducible builds.
 
+Retrieval currently searches vectors from every Ready PDF and relies on semantic
+ranking to select evidence, even when a question names one document. On
+constrained GPUs, model loading plus embedding, reranking, and answer generation
+can exceed the configured dependency timeout. Both are accepted V4 limitations.
+
 ## Stack
 
 ```text
@@ -101,6 +111,7 @@ Backend    → FastAPI
 Vector DB  → Qdrant
 LLM        → Ollama / qwen3:8b
 Embeddings → Ollama / qwen3-embedding:8b
+Router     → Ollama / qwen2.5:0.5b
 ```
 
 ## High-Level Architecture
@@ -149,6 +160,7 @@ UI shows answer + PDF/page citations
 - LLM reranking
 - grounded answer generation
 - PDF/page citations
+- small-model routing for casual chat versus document RAG
 - basic chat history
 - compact older conversation context when needed
 
@@ -237,6 +249,13 @@ remove document from registry
 ```text
 POST /chat
 ↓
+load bounded recent history
+↓
+qwen2.5:0.5b classifies GENERAL or RAG using at most one previous turn
+↓
+GENERAL: a separate history-free small-model call answers and saves the turn
+
+RAG:
 question embedding
 ↓
 Qdrant Top-K search
@@ -257,6 +276,10 @@ save chat history
 ↓
 return answer
 ```
+
+Router failures and invalid structured output fall back to RAG. This keeps
+document questions on the grounded path. GENERAL messages can be answered when
+no document is Ready; RAG messages still require at least one Ready document.
 
 For V4, chat requests can remain synchronous.
 

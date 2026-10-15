@@ -100,11 +100,21 @@ messages:
 }
 ```
 
-`answer` is Markdown text, not HTML. `sources` is always an array. No ready
-documents returns **409**. Ready documents but insufficient evidence returns
+`answer` is Markdown text, not HTML. `sources` is always an array. Casual
+GENERAL messages can succeed without documents and return `sources: []`.
+Document-routed RAG messages with no ready documents return **409**. Ready
+documents but insufficient evidence returns
 **200** with an explanatory answer and `sources: []`; it must not fabricate an
 answer. Dependency unavailability returns **503**, dependency timeout **504**,
 and unexpected failures **500**. Failed turns are not partially persisted.
+
+The backend sends at most one previous conversation turn to a small routing
+model before the document readiness check, and only for a referential follow-up.
+Standalone messages are classified without history. The routing call only classifies.
+GENERAL messages are answered by a separate call that receives the current
+message without document history. RAG messages use the existing grounded
+pipeline. Invalid or unavailable router output falls back to RAG; routing
+details are internal and do not change the response schema.
 
 The response shape matches the current UI. Persisted messages receive stable
 backend IDs, exposed through GET /chat. Clients may use temporary IDs for the

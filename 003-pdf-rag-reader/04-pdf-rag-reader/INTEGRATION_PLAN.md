@@ -12,12 +12,33 @@ integration are implemented. The sections below preserve the reviewable scopes.
 | 12.5 Acceptance | Known-answer/no-evidence checks, recovery and browser checks passed; mobile button fixed |
 | 12.6 Completion | Setup, configuration, troubleshooting and limitations documented; final checks passed |
 
-Final validation: **59 backend tests passed**, HTTP client checks passed, and
+Final validation: **77 backend tests passed**, HTTP client checks passed, and
 frontend TypeScript/production build passed. One existing Starlette test-client
 deprecation warning remains. Live results are recorded in
 [RUNTIME_VERIFICATION.md](RUNTIME_VERIFICATION.md) and
 [END_TO_END_VERIFICATION.md](END_TO_END_VERIFICATION.md). Fixture coverage is not
 a general model-quality guarantee. Known scope limits are in the root README.
+
+## V4 completion decision — 16 October 2026
+
+V4 and the overall RAG learning system are complete. The later small-model
+router classifies casual chat versus RAG, answers GENERAL messages without
+document history, and sends document questions through the grounded pipeline.
+Its final route benchmark matched all 15 expected routes; 13 of 15 end-to-end
+answer checks met their expected behavior.
+
+Two observations remain as optional follow-up work:
+
+- An ambiguous multi-document manager question sometimes retrieves evidence
+  from only one PDF. Explicit document selection or document-scope routing can
+  be explored in a later version.
+- One comparison query repeatedly exceeded the 120-second dependency timeout
+  on the available GPU. Stage timing and model-residency optimization can be
+  explored when performance becomes the learning goal.
+
+Current retrieval intentionally searches all Ready document IDs, including when
+a question names one PDF; semantic search and reranking choose the evidence.
+This behavior is accepted for V4's scale.
 
 ## 12.1 — HTTP client and development configuration
 
@@ -105,5 +126,7 @@ Review result: the root README provides the clean-checkout path, and units
 The units were completed in the order 12.1 → 12.2 → 12.3, followed by runtime
 and acceptance verification, then documentation review. Vue component blocks
 use template → script → style order.
-No router/store library, authentication, streaming, or additional backend feature
-units are introduced by this plan.
+No frontend router/store library, authentication, streaming, or additional
+application infrastructure is introduced by this plan. The later model router
+is a backend service and does not require a frontend routing library or global
+state store.

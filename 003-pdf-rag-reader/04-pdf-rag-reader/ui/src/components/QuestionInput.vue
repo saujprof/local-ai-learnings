@@ -5,7 +5,7 @@
       placeholder="Ask about your PDFs…" aria-describedby="question-help"
       @input="$emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)" />
     <div class="question-actions">
-      <p id="question-help">{{ canSend ? 'Answers include sources from your PDFs.' : 'A ready PDF and loaded chat history are required. Resolve any errors above to continue.' }}</p>
+      <p id="question-help">{{ canSend ? 'Casual messages work directly. Document answers include PDF sources.' : 'Chat history must load first. Resolve any errors above to continue.' }}</p>
       <button type="submit" :disabled="sending || !canSend || !modelValue.trim()">{{ sending ? 'Sending…' : 'Send' }}</button>
     </div>
   </form>

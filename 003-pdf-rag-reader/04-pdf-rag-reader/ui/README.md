@@ -61,6 +61,8 @@ filename triggers, `/fail` commands, or browser-stored history remain in the
 service. Old `pdf-rag-demo-chat-v1` browser data is ignored.
 
 - Upload a PDF and wait until Ready, then send a question.
+- Greetings and other casual messages can be sent without a Ready PDF; the
+  backend router answers them with no citations.
 - Verify Markdown answers and backend-owned PDF/page citations.
 - Reload to retrieve persisted messages. Scroll upward to load older pages.
 - Use Refresh history to replace the conversation with the latest ten stored
@@ -233,6 +235,10 @@ response arrives
 ↓
 show answer + citations
 ```
+
+The backend may instead classify a casual message as GENERAL and return a short
+answer with no citations. The UI uses the same request and response shape for
+both paths, so sending is available before a document reaches Ready.
 
 Example response:
 
