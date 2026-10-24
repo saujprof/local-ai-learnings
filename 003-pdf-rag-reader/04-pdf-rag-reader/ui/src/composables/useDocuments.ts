@@ -7,6 +7,8 @@ export function useDocuments() {
   const loading = ref(true)
   const uploading = ref(false)
   const error = ref('')
+  const refreshError = ref('')
+  const refreshing = ref(false)
   const deletingIds = ref(new Set<string>())
   let timer: ReturnType<typeof setTimeout> | undefined
   let disposed = false
@@ -14,12 +16,15 @@ export function useDocuments() {
 
   function scheduleRefresh() {
     clearTimeout(timer)
-    if (!disposed && documents.value.some((document) => document.status === 'processing')) {
-      timer = setTimeout(refresh, 1000)
+    if (!disposed && documents.value.some((document) => document.status === 'processing' || document.status === 'deleting')) {
+      timer = setTimeout(refresh, 3000)
     }
   }
 
   async function refresh() {
+    if (disposed || refreshing.value) return
+    refreshing.value = true
+    refreshError.value = ''
     clearTimeout(timer)
     const startedAt = revision
     try {
@@ -27,10 +32,11 @@ export function useDocuments() {
       // An upload or deletion may have completed while this request was pending.
       if (!disposed && startedAt === revision) documents.value = result
     } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : 'Could not load documents.'
+      if (!disposed) refreshError.value = cause instanceof Error ? cause.message : 'Could not load documents.'
     } finally {
       loading.value = false
-      scheduleRefresh()
+      refreshing.value = false
+      if (!refreshError.value) scheduleRefresh()
     }
   }
 
@@ -41,10 +47,11 @@ export function useDocuments() {
     try {
       const document = await uploadDocument(file)
       revision++
-      documents.value.unshift(document)
+      if (disposed) return
+      documents.value = [document, ...documents.value.filter((item) => item.id !== document.id)]
       scheduleRefresh()
     } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : 'Upload failed. Try again.'
+      error.value = (cause instanceof Error ? cause.message : 'Upload failed.') + ' Refresh the document list before retrying.'
     } finally {
       uploading.value = false
     }
@@ -72,5 +79,5 @@ export function useDocuments() {
     clearTimeout(timer)
   })
 
-  return { documents, loading, uploading, deletingIds, error, upload, remove }
+  return { documents, loading, uploading, deletingIds, error, refreshError, refreshing, refresh, upload, remove }
 }

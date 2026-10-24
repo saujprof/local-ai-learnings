@@ -12,7 +12,10 @@
           <h2 id="documents-title">Documents</h2>
           <p>Your PDFs provide the context for each answer.</p>
         </header>
-        <p class="mock-notice">Demo mode · PDFs are simulated and cleared on reload.</p>
+        <div class="api-error">
+          <button type="button" :disabled="refreshing" @click="refresh">{{ refreshing ? 'Refreshing…' : 'Refresh documents' }}</button>
+          <p v-if="refreshError" class="document-error" role="alert">{{ refreshError }} Use Refresh documents to retry.</p>
+        </div>
         <DocumentUpload :uploading="uploading" @upload="upload" />
         <p v-if="error" class="document-error api-error" role="alert">{{ error }}</p>
         <DocumentList :documents="documents" :loading="loading" :deleting-ids="deletingIds" @delete="remove" />
@@ -21,8 +24,11 @@
       <section class="panel chat-panel" aria-labelledby="chat-title">
         <header class="panel-header">
           <h2 id="chat-title">Chat</h2>
-          <p>Explore your documents one question at a time.</p>
+          <p>Ask questions about your indexed PDFs.</p>
         </header>
+        <div class="api-error">
+          <button type="button" :disabled="sending || loadingHistory" @click="refreshHistory">Refresh history</button>
+        </div>
         <ChatWindow :messages="messages" :sending="sending" :loading-history="loadingHistory"
           :history-ready="historyReady" :has-more="hasMore" :history-error="historyError" @load-older="loadHistory" />
         <p v-if="chatError" class="document-error api-error" role="alert">{{ chatError }}</p>
@@ -41,9 +47,9 @@ import DocumentUpload from './components/DocumentUpload.vue'
 import DocumentList from './components/DocumentList.vue'
 import { useDocuments } from './composables/useDocuments'
 
-const { documents, loading, uploading, deletingIds, error, upload, remove } = useDocuments()
-const { messages, question, sending, error: chatError, send, historyError, loadingHistory, historyReady, hasMore, loadHistory } = useChat()
-const canSend = computed(() => historyReady.value && !loadingHistory.value && documents.value.some((document) => document.status === 'ready' && !deletingIds.value.has(document.id)))
+const { documents, loading, uploading, deletingIds, error, refreshError, refreshing, refresh, upload, remove } = useDocuments()
+const { messages, question, sending, error: chatError, send, historyError, loadingHistory, historyReady, hasMore, loadHistory, refreshHistory, needsReconciliation } = useChat()
+const canSend = computed(() => !needsReconciliation.value && historyReady.value && !loadingHistory.value)
 function sendIfReady() {
   if (canSend.value) void send()
 }

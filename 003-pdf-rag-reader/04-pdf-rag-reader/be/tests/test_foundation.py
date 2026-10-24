@@ -29,7 +29,9 @@ def test_configuration(monkeypatch, tmp_path):
 
 @pytest.mark.parametrize('values', [
     {'ollama_url': 'invalid'}, {'qdrant_url': 'ftp://localhost'},
-    {'ollama_chat_model': '   '}, {'max_upload_bytes': -1},
+    {'ollama_router_model': '   '}, {'ollama_chat_model': '   '},
+    {'router_context_messages': 3}, {'router_timeout_seconds': 0},
+    {'max_upload_bytes': -1},
 ])
 def test_invalid_configuration(values):
     with pytest.raises(ValidationError):

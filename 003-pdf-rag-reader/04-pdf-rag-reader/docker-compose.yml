@@ -3,10 +3,22 @@ name: pdf-rag-v4
 services:
   backend:
     build: ./be
+    command:
+      - uvicorn
+      - app.main:create_app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --log-level
+      - ${UVICORN_LOG_LEVEL:-debug}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     environment:
+      UVICORN_LOG_LEVEL: ${UVICORN_LOG_LEVEL:-debug}
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_ROUTER_MODEL: ${OLLAMA_ROUTER_MODEL:-qwen2.5:0.5b}
       OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-qwen3:8b}
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-qwen3-embedding:8b}
       QDRANT_URL: http://qdrant:6333
@@ -14,6 +26,9 @@ services:
       DEPENDENCY_TIMEOUT_SECONDS: ${DEPENDENCY_TIMEOUT_SECONDS:-120}
       CHAT_CONTEXT_MESSAGES: ${CHAT_CONTEXT_MESSAGES:-10}
       CHAT_CONTEXT_CHARACTERS: ${CHAT_CONTEXT_CHARACTERS:-6000}
+      ROUTER_CONTEXT_MESSAGES: ${ROUTER_CONTEXT_MESSAGES:-2}
+      ROUTER_CONTEXT_CHARACTERS: ${ROUTER_CONTEXT_CHARACTERS:-1500}
+      ROUTER_TIMEOUT_SECONDS: ${ROUTER_TIMEOUT_SECONDS:-20}
       RETRIEVAL_TOP_K: ${RETRIEVAL_TOP_K:-10}
       RETRIEVAL_RELATIVE_THRESHOLD: ${RETRIEVAL_RELATIVE_THRESHOLD:-0.7}
       RETRIEVAL_FINAL_K: ${RETRIEVAL_FINAL_K:-4}
